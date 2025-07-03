@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('address');
             $table->string('payment_method');
             $table->decimal('total', 12, 0);
+            $table->unsignedInteger('vat_amount')->default(0);
             $table->string('status')->default('pending');
             $table->enum('status_payment', ['pending', 'paid', 'failed', 'refunded'])->default('pending');
             $table->unsignedBigInteger('user_id')->nullable();

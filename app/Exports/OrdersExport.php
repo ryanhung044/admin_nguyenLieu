@@ -12,12 +12,39 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class OrdersExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
 {
+    protected $request;
+
+    public function __construct($request)
+    {
+        $this->request = $request;
+    }
+
     public function collection()
     {
-        return Order::with(['items', 'user'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $query = Order::with(['items', 'user'])
+            ->orderBy('created_at', 'desc');
+
+        if ($this->request->filled('search')) {
+            $keyword = $this->request->search;
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'like', "%{$keyword}%")
+                    ->orWhere('phone', 'like', "%{$keyword}%");
+            });
+        }
+
+        if ($this->request->filled('status') && $this->request->status !== 'all') {
+            $query->where('status', $this->request->status);
+        }
+
+        if ($this->request->filled('from_date') || $this->request->filled('to_date')) {
+            $from = $this->request->from_date ?? '2000-01-01';
+            $to = $this->request->to_date ?? now()->toDateString();
+            $query->whereBetween('created_at', [$from, $to]);
+        }
+
+        return $query->get();
     }
+
 
     public function map($order): array
     {

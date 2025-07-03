@@ -773,6 +773,7 @@ class ClientController extends Controller
             'oldUser'        => 'nullable',
             'cart.*.variant_id' => 'nullable|integer|exists:product_variants,id',
             'cart.*.name' => 'nullable',
+            'include_vat' => 'nullable|boolean',
         ]);
 
         $ref = User::find($validated['referrer_id'] ?? null);
@@ -853,8 +854,15 @@ class ClientController extends Controller
 
                 continue;
             }
+            $includeVAT = $validated['include_vat'] ?? false;
+            $vatAmount = $includeVAT ? ceil($total * 0.08) : 0;
+            $finalTotal = $total + $vatAmount;
 
-            $order->update(['total' => $total]);
+            $order->update([
+                'total' => $finalTotal,
+                'vat_amount' => $vatAmount, // 👉 nếu bạn muốn lưu riêng
+            ]);
+
             DB::commit();
             event(new NewOrderPlaced($order));
 

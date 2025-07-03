@@ -10,6 +10,7 @@ use App\Models\CommissionUser;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,11 +20,40 @@ class OrderController extends Controller
     /**
      * Display a listing of the resource.
      */
+    // public function index(Request $request)
+    // {
+    //     // $orders = Order::with('items.product', 'referrer')->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->orderby('status')->paginate(7);
+    //     // return view('admin.orders.index', compact('orders'));
+    //     $query = Order::with('items.product', 'referrer');
+    //     if ($request->has('search') && $request->search != '') {
+    //         $keyword = $request->search;
+    //         $query->where(function ($q) use ($keyword) {
+    //             $q->where('name', 'like', "%{$keyword}%")
+    //                 ->orWhere('id', 'like', "%{$keyword}%")
+    //                 ->orWhere('phone', 'like', "%{$keyword}%");
+    //         });
+    //     }
+
+    //     if ($request->status && $request->status !== 'all') {
+    //         $query->where('status', $request->status);
+    //     }
+
+    //     $orders = $query
+    //         ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+    //         ->orderBy('status')
+    //         ->orderByDesc('created_at')
+    //         ->paginate(10)
+    //         ->withQueryString(); // giữ lại query khi chuyển trang
+
+    //     return view('admin.orders.index', compact('orders'));
+    // }
+
     public function index(Request $request)
     {
-        // $orders = Order::with('items.product', 'referrer')->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->orderby('status')->paginate(7);
-        // return view('admin.orders.index', compact('orders'));
         $query = Order::with('items.product', 'referrer');
+        // ->whereDate('created_at', Carbon::today()); // Chỉ lấy đơn hôm nay
+
+        // Tìm kiếm theo tên, ID, hoặc số điện thoại
         if ($request->has('search') && $request->search != '') {
             $keyword = $request->search;
             $query->where(function ($q) use ($keyword) {
@@ -32,7 +62,18 @@ class OrderController extends Controller
                     ->orWhere('phone', 'like', "%{$keyword}%");
             });
         }
+        if ($request->filled('from_date') || $request->filled('to_date')) {
+            $from = $request->from_date
+                ? Carbon::parse($request->from_date)->startOfDay()
+                : Carbon::minValue();
 
+            $to   = $request->to_date
+                ? Carbon::parse($request->to_date)->endOfDay()
+                : Carbon::now()->endOfDay();
+
+            $query->whereBetween('created_at', [$from, $to]);
+        }
+        // Lọc theo trạng thái nếu có
         if ($request->status && $request->status !== 'all') {
             $query->where('status', $request->status);
         }
@@ -42,10 +83,11 @@ class OrderController extends Controller
             ->orderBy('status')
             ->orderByDesc('created_at')
             ->paginate(10)
-            ->withQueryString(); // giữ lại query khi chuyển trang
+            ->withQueryString();
 
         return view('admin.orders.index', compact('orders'));
     }
+
 
     /**
      * Show the form for creating a new resource.
@@ -96,7 +138,7 @@ class OrderController extends Controller
         //
     }
 
-    public function updateStatus(Request $request, Order $order)
+    public function updateStatusOld(Request $request, Order $order)
     {
         DB::beginTransaction();
         try {
@@ -109,6 +151,7 @@ class OrderController extends Controller
                 'cancelled' => 'cancelled', // hủy rồi thì giữ nguyên
             ];
             $status = $order->status;
+
             if ($order->status == 'completed' || $order->status == 'cancelled') {
                 return redirect()->back()->with('success', 'Không thể cập nhật trạng thái!');
             }
@@ -175,8 +218,8 @@ class OrderController extends Controller
 
                     // }
                     // return $item->id;
-                    $commission_user = CommissionUser::where('order_item_id', $$order->user_id)->where('agency_rights', true)->get();
-                    foreach ($commission_user as $commission) {
+                    $commission_user1 = CommissionUser::where('order_item_id', $item->id)->where('agency_rights', true)->get();
+                    foreach ($commission_user1 as $commission) {
                         $referrer = User::find($commission->user_id);
                         if (!$referrer) break;
                         $referrer->balance += $commission->amount;
@@ -184,17 +227,28 @@ class OrderController extends Controller
                         $commission->status = 'paid';
                         $commission->save();
                     }
-                    if ($product->category_id == 2 && $product->sale_price >= 1000000) {
-                        $commission_user = CommissionUser::where('user_id', $item->id)->where('agency_rights', false)->get();
-                        foreach ($commission_user as $commission) {
-                            $user = User::find($commission->user_id);
-                            if (!$user) break;
+                    // if ($product->category_id == 2 && $product->sale_price >= 1000000) {
+                    $commission_user2 = CommissionUser::where('user_id', $item->referrer_id)->where('agency_rights', false)->get();
+                    foreach ($commission_user2 as $commission) {
+                        $user = User::find($commission->user_id);
+                        if (!$user) break;
+                        $hasHighValueCombo = DB::table('orders')
+                            ->join('order_items', 'orders.id', '=', 'order_items.order_id')
+                            ->join('products', 'order_items.product_id', '=', 'products.id')
+                            ->where('orders.user_id', $user->id)
+                            ->where('orders.status_payment', 'paid')
+                            ->where('products.category_id', 2)
+                            ->where('products.sale_price', '>=', 1000000)
+                            ->exists();
+                        if ($hasHighValueCombo || ($product->category_id == 2 && $product->sale_price >= 1000000)) {
                             $user->balance += $commission->amount;
                             $user->save();
                             $commission->status = 'paid';
+                            $commission->agency_rights = true;
                             $commission->save();
                         }
                     }
+                    // }
 
                     // if ($product->category_id == 2) {
                     //     // Hoa hồng cho người giới thiệu cấp 2 (f2)
@@ -222,6 +276,79 @@ class OrderController extends Controller
                 // }
                 // }
             }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
+        } catch (\Throwable $th) {
+            DB::rollBack();
+        }
+    }
+
+    public function updateStatus(Request $request, Order $order)
+    {
+        DB::beginTransaction();
+        try {
+            $statusFlow = [
+                'pending' => 'approved',
+                'approved' => 'packed',
+                'packed' => 'shipped',
+                'shipped' => 'completed',
+                'completed' => 'completed', // đã hoàn thành thì không nâng cấp nữa
+                'cancelled' => 'cancelled', // hủy rồi thì giữ nguyên
+            ];
+            $status = $order->status;
+
+            if ($order->status == 'completed' || $order->status == 'cancelled') {
+                return redirect()->back()->with('success', 'Không thể cập nhật trạng thái!');
+            }
+
+            if ($request->status != $order->status) {
+                $status = $request->status;
+            }
+            // return $status;
+            if ($request->status === 'cancelled') {
+
+                foreach ($order->items as $item) {
+                    $product = Product::find($item->product_id);
+                    if ($product) {
+                        $product->increment('stock', $item->quantity);
+                    }
+                    $commission_user = CommissionUser::where('order_item_id', $item->id)->get();
+                    foreach ($commission_user as $commission) {
+                        $commission->status = 'cancel';
+                        $commission->save();
+                    }
+                    // return $product;
+                }
+                if ($order->payment_method == 'VNPAY' && $order->status_payment == 'paid') {
+                    $user = User::find($order->user_id);
+                    if ($user) {
+                        $user->balance += $order->total;
+                        $user->save();
+                        $order->status_payment = 'refunded';
+                        $order->save();
+                    }
+                }
+            }
+            $currentStatus = $status;
+            $nextStatus = $statusFlow[$currentStatus] ?? $currentStatus;
+
+            $order->status = $nextStatus;
+            if ($status === 'completed') {
+                $order->status_payment = 'paid';
+            }
+            $order->save();
+
+            if ($status === 'completed' && $order->referrer_id && $order->user_id) {
+                $totalCommission = 0;
+                $orderItems = OrderItem::where('order_id', $order->id)->get();
+                foreach ($orderItems as $item) {
+                    $product = Product::find($item->product_id);
+                    if (!$product) continue;
+                    $totalCommission += $item->commission_amount;
+                }
+            }
+
 
             DB::commit();
             return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');

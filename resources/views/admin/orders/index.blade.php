@@ -2,11 +2,6 @@
 
 @section('content')
     <h1 class="mb-4">Danh sách đơn hàng</h1>
-    {{-- <form method="GET" action="{{ route('admin.orders.index') }}" class="mb-3">
-        <input type="text" name="search" value="{{ request('search') }}" placeholder="Tìm kiếm đơn hàng..."
-            class="form-control w-25 d-inline-block">
-        <button type="submit" class="btn btn-primary">Tìm</button>
-    </form> --}}
     <div class="d-flex justify-content-between align-items-center mb-3" style="overflow: auto">
         <div class="btn-group" role="group" aria-label="Lọc theo trạng thái">
             @php
@@ -28,16 +23,40 @@
             @endforeach
         </div>
         <div class="d-flex justify-content-between align-items-center gap-1">
-            <form method="GET" action="{{ route('admin.orders.index') }}"
+            {{-- <form method="GET" action="{{ route('admin.orders.index') }}"
                 class="d-flex justify-content-between align-items-center ">
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Tìm kiếm đơn hàng..." class="form-control d-inline-block" style="min-width: 150px">
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Tìm kiếm đơn hàng..."
+                    class="form-control d-inline-block" style="min-width: 150px">
                 <button type="submit" class="btn btn-primary">Tìm</button>
+            </form> --}}
+            {{-- Thêm sau ô tìm kiếm --}}
+            <form method="GET" action="{{ route('admin.orders.index') }}"
+                class="d-flex justify-content-between align-items-center gap-2">
+
+                {{-- Giữ lại các tham số hiện có --}}
+                <input type="hidden" name="status" value="{{ request('status', 'all') }}">
+
+                {{-- Từ ngày --}}
+                <input type="date" name="from_date" value="{{ request('from_date') }}" class="form-control"
+                    style="min-width:150px">
+
+                {{-- Đến ngày --}}
+                <input type="date" name="to_date" value="{{ request('to_date') }}" class="form-control"
+                    style="min-width:150px">
+
+                {{-- Ô tìm kiếm cũ --}}
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Tìm kiếm đơn hàng..."
+                    class="form-control" style="min-width:150px">
+
+                <button type="submit" class="btn btn-primary">Lọc</button>
             </form>
 
+
             <div>
-                <a href="{{ route('admin.orders.export') }}" class="btn btn-success">
+                <a href="{{ route('admin.orders.export', request()->query()) }}" class="btn btn-success">
                     <i class="fas fa-file-excel"></i> Xuất Excel
                 </a>
+
             </div>
 
         </div>
