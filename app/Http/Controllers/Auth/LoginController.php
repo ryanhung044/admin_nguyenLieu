@@ -42,7 +42,7 @@ class LoginController extends Controller
         $remember = $request->has('remember');
 
         if (Auth::attempt($credentials, $remember)) {
-            return redirect('/admin')->with('success', 'Đăng nhập thành công!');
+            return redirect()->route('admin')->with('success', 'Đăng nhập thành công!');
         }
 
         return redirect()->back()
