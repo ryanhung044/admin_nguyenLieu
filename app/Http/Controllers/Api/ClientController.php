@@ -2130,29 +2130,39 @@ class ClientController extends Controller
     }
 
     public function indexOrder(Request $request)
-    {
-        $user = null;
-        $authHeader = $request->header('Authorization'); // lấy header Authorization
-        if ($authHeader && preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-            $token = $matches[1];
+{
+    // Lấy token từ header Authorization
+    $user = null;
+    $authHeader = $request->header('Authorization');
 
-            // kiểm tra token có hợp lệ không
-            $accessToken = PersonalAccessToken::findToken($token);
-            if ($accessToken) {
-                $user = $accessToken->tokenable;
-            }
+    if ($authHeader && preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+        $token = $matches[1];
+        $accessToken = PersonalAccessToken::findToken($token);
+
+        if ($accessToken) {
+            $user = $accessToken->tokenable;
         }
-        $status = $request->query('status'); // 'pending', 'shipping', 'completed'
-        $orders = Order::with('items')
-            ->where('user_id', $user->id)
-            ->when($status && $status !== 'all', function ($query) use ($status) {
-                $query->where('status', $status);
-            })
-            ->orderByDesc('created_at')
-            ->get();
-
-        return response()->json($orders);
     }
+
+    // Nếu không có user thì trả lỗi 401
+    if (!$user) {
+        return response()->json(['message' => 'Unauthorized'], 401);
+    }
+
+    // Lọc đơn hàng
+    $status = $request->query('status'); // e.g., 'pending', 'completed', 'all'
+    
+    $orders = Order::with('items')
+        ->where('user_id', $user->id)
+        ->when($status && $status !== 'all', function ($query) use ($status) {
+            $query->where('status', $status);
+        })
+        ->orderByDesc('created_at')
+        ->get();
+
+    return response()->json($orders);
+}
+
 
     // Lấy chi tiết một đơn hàng cụ thể
     public function showOrder($id, Request $request)
