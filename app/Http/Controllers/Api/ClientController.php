@@ -2145,7 +2145,7 @@ class ClientController extends Controller
         $status = $request->query('status'); // 'pending', 'shipping', 'completed'
         $orders = Order::with('items')
             ->where('user_id', $user->id)
-            ->when($status, function ($query) use ($status) {
+            ->when($status && $status !== 'all', function ($query) use ($status) {
                 $query->where('status', $status);
             })
             ->orderByDesc('created_at')
