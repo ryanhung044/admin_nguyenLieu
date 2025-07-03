@@ -104,6 +104,10 @@ Route::get('/layout2', function () {
     return view('layout2');
 });
 
+Route::get('/test', function () {
+    return dd("ok");
+});
+
 // Route::get('/referrer', function () {
 //     return view('referrer');
 // });
