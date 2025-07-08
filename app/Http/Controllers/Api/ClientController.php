@@ -18,6 +18,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductCategory;
 use App\Models\ProductVariant;
+use App\Models\Voucher;
 use App\Models\WithdrawRequest;
 use BcMath\Number;
 use Illuminate\Support\Facades\Auth;
@@ -55,7 +56,7 @@ class ClientController extends Controller
         }
         $AppSetting = appSetting::first();
         $banners = banner::where('position', 1)->where('status', 1)->get();
-        $products = Product::with('category', 'group')->latest()->take(10)->get();
+        $products = Product::with('category', 'group', 'variants', 'variants.attributeValues')->latest()->take(10)->get();
         $articles = article::with('category')->latest()->take(10)->get();
         $menu1 = banner::where('position', 2)->where('status', 1)->get();
         $topProducts = Product::select(
@@ -69,6 +70,7 @@ class ClientController extends Controller
             DB::raw('SUM(order_items.quantity) as total_sold'),
         )
             ->join('order_items', 'products.id', '=', 'order_items.product_id')
+            ->with('variants', 'variants.attributeValues') // Load biến thể
             ->groupBy(
                 'products.id',
                 'products.name',
@@ -759,28 +761,150 @@ class ClientController extends Controller
     //     }
     // }
 
+    // public function place(Request $request)
+    // {
+    //     $validated = $request->validate([
+    //         'name'           => 'required|string|max:255',
+    //         'phone'          => 'required|string|max:20',
+    //         'address'        => 'required|string|max:255',
+    //         'payment_method' => 'required|string',
+    //         'cart'           => 'required|array|min:1',
+    //         'cart.*.id'      => 'required|integer|exists:products,id',
+    //         'cart.*.quantity' => 'required|integer|min:1',
+    //         'referrer_id'    => 'nullable',
+    //         'oldUser'        => 'nullable',
+    //         'cart.*.variant_id' => 'nullable|integer|exists:product_variants,id',
+    //         'cart.*.name' => 'nullable',
+    //         'include_vat' => 'nullable|boolean',
+    //         'voucher' => 'nullable|string|exists:vouchers,code',
+    //     ]);
+
+    //     $ref = User::find($validated['referrer_id'] ?? null);
+    //     $referrerId = $ref ? $ref->id : null;
+    //     // return $referrerId;
+    //     $cart = array_values($validated['cart']);
+    //     // return $cart;
+    //     $user = null;
+
+    //     $authHeader = $request->header('Authorization');
+    //     if ($authHeader && preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+    //         $token = $matches[1];
+    //         $accessToken = PersonalAccessToken::findToken($token);
+    //         if ($accessToken) {
+    //             $user = $accessToken->tokenable;
+    //         }
+    //     }
+
+    //     // if (!$user) {
+    //     //     return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+    //     // }
+
+    //     DB::beginTransaction();
+
+    //     try {
+    //         $total = 0;
+    //         $order = Order::create([
+    //             'user_id'        => $user?->id,
+    //             'name'           => $validated['name'],
+    //             'phone'          => $validated['phone'],
+    //             'address'        => $validated['address'],
+    //             'payment_method' => $validated['payment_method'],
+    //             'total'          => 0,
+    //             'status'         => 'pending',
+    //             'referrer_id'    => $referrerId,
+    //         ]);
+
+    //         foreach ($cart as $item) {
+    //             $variant = isset($item['variant_id']) ? ProductVariant::find($item['variant_id']) : null;
+    //             // return $cart;
+    //             $product = $variant ? $variant->product : Product::find($item['id']);
+    //             if (!$product) continue;
+
+    //             $stock = $variant ? $variant->stock : $product->stock;
+
+    //             if ($item['quantity'] > $stock) {
+    //                 throw new \Exception("Sản phẩm \"{$product->name}\" chỉ còn {$stock} trong kho.");
+    //             }
+
+    //             $salePrice = $variant ? $variant->price : $product->sale_price;
+
+    //             $subtotal = $salePrice * $item['quantity'];
+    //             $total += $subtotal;
+
+    //             $orderItem = OrderItem::create([
+    //                 'order_id'         => $order->id,
+    //                 'product_id'       => $product->id,
+    //                 'variant_id'       => $variant?->id,
+    //                 'product_name'     => $item['name'],
+    //                 'thumbnail'        => $product->thumbnail,
+    //                 'price'            => $salePrice,
+    //                 'quantity'         => $item['quantity'],
+    //                 'referrer_id'      => $referrerId,
+    //                 'commission_amount' => 0
+    //             ]);
+
+    //             $product->decrement('stock', $item['quantity']);
+    //             if ($referrerId) {
+    //                 CommissionUser::create([
+    //                     'user_id'       => $referrerId,
+    //                     'order_item_id' => $orderItem->id,
+    //                     'level'         => '1',
+    //                     'amount'        => $salePrice * $item['quantity'] * ($product->commission_rate / 100),
+    //                     'status'        => 'pending',
+    //                     'agency_rights' => true
+    //                 ]);
+    //             }
+
+    //             continue;
+    //         }
+    //         $includeVAT = $validated['include_vat'] ?? false;
+    //         $vatAmount = $includeVAT ? ceil($total * 0.08) : 0;
+    //         $finalTotal = $total + $vatAmount;
+
+    //         $order->update([
+    //             'total' => $finalTotal,
+    //             'vat_amount' => $vatAmount, // 👉 nếu bạn muốn lưu riêng
+    //         ]);
+
+    //         DB::commit();
+    //         event(new NewOrderPlaced($order));
+
+    //         return response()->json([
+    //             'success'  => true,
+    //             'message'  => 'Đặt hàng thành công!',
+    //             'order_id' => $order->id
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
     public function place(Request $request)
     {
         $validated = $request->validate([
-            'name'           => 'required|string|max:255',
-            'phone'          => 'required|string|max:20',
-            'address'        => 'required|string|max:255',
-            'payment_method' => 'required|string',
-            'cart'           => 'required|array|min:1',
-            'cart.*.id'      => 'required|integer|exists:products,id',
-            'cart.*.quantity' => 'required|integer|min:1',
-            'referrer_id'    => 'nullable',
-            'oldUser'        => 'nullable',
+            'name'             => 'required|string|max:255',
+            'phone'            => 'required|string|max:20',
+            'address'          => 'required|string|max:255',
+            'payment_method'   => 'required|string',
+            'cart'             => 'required|array|min:1',
+            'cart.*.id'        => 'required|integer|exists:products,id',
+            'cart.*.quantity'  => 'required|integer|min:1',
             'cart.*.variant_id' => 'nullable|integer|exists:product_variants,id',
-            'cart.*.name' => 'nullable',
-            'include_vat' => 'nullable|boolean',
+            'cart.*.name'      => 'nullable',
+            'referrer_id'      => 'nullable|integer|exists:users,id',
+            'oldUser'          => 'nullable',
+            'include_vat'      => 'nullable|boolean',
+            'voucher'          => 'nullable|string|exists:vouchers,code',
         ]);
 
         $ref = User::find($validated['referrer_id'] ?? null);
         $referrerId = $ref ? $ref->id : null;
-        // return $referrerId;
+
         $cart = array_values($validated['cart']);
-        // return $cart;
+        $voucherCode = $validated['voucher'] ?? null;
         $user = null;
 
         $authHeader = $request->header('Authorization');
@@ -791,10 +915,6 @@ class ClientController extends Controller
                 $user = $accessToken->tokenable;
             }
         }
-
-        // if (!$user) {
-        //     return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-        // }
 
         DB::beginTransaction();
 
@@ -813,26 +933,28 @@ class ClientController extends Controller
 
             foreach ($cart as $item) {
                 $variant = isset($item['variant_id']) ? ProductVariant::find($item['variant_id']) : null;
-                // return $cart;
                 $product = $variant ? $variant->product : Product::find($item['id']);
                 if (!$product) continue;
 
                 $stock = $variant ? $variant->stock : $product->stock;
-
                 if ($item['quantity'] > $stock) {
                     throw new \Exception("Sản phẩm \"{$product->name}\" chỉ còn {$stock} trong kho.");
                 }
 
-                $salePrice = $variant ? $variant->price : $product->sale_price;
-
+                $salePrice = $variant ? $variant->sale_price : $product->sale_price;
                 $subtotal = $salePrice * $item['quantity'];
                 $total += $subtotal;
+                $productName = $product->name;
 
+                if ($variant && $variant->attributeValues()->exists()) {
+                    $attributeValues = $variant->attributeValues()->pluck('value')->toArray();
+                    $productName .= ' [' . implode(' - ', $attributeValues) . ']';
+                }
                 $orderItem = OrderItem::create([
                     'order_id'         => $order->id,
                     'product_id'       => $product->id,
                     'variant_id'       => $variant?->id,
-                    'product_name'     => $item['name'],
+                    'product_name'     => $productName,
                     'thumbnail'        => $product->thumbnail,
                     'price'            => $salePrice,
                     'quantity'         => $item['quantity'],
@@ -840,7 +962,13 @@ class ClientController extends Controller
                     'commission_amount' => 0
                 ]);
 
-                $product->decrement('stock', $item['quantity']);
+                if ($variant) {
+                    $variant->decrement('stock', $item['quantity']);
+                } else {
+                    $product->decrement('stock', $item['quantity']);
+                }
+
+
                 if ($referrerId) {
                     CommissionUser::create([
                         'user_id'       => $referrerId,
@@ -851,16 +979,70 @@ class ClientController extends Controller
                         'agency_rights' => true
                     ]);
                 }
-
-                continue;
             }
+
+            // 👉 Xử lý giảm giá
+            $discountAmount = 0;
+            if ($voucherCode) {
+                $voucher = Voucher::where('code', $voucherCode)->first();
+
+                if (!$voucher) {
+                    throw new \Exception("Mã giảm giá không tồn tại.");
+                }
+
+                // Thêm điều kiện kiểm tra
+                if (!$voucher->is_active) {
+                    throw new \Exception("Mã giảm giá hiện không hoạt động.");
+                }
+
+                if (now()->lt($voucher->start_date)) {
+                    throw new \Exception("Mã giảm giá chưa bắt đầu.");
+                }
+
+                if (now()->gt($voucher->end_date)) {
+                    throw new \Exception("Mã giảm giá đã hết hạn.");
+                }
+
+                if ($voucher->quantity <= $voucher->used) {
+                    throw new \Exception("Mã giảm giá đã được sử dụng hết.");
+                }
+
+                if ($voucher->min_order_value && $total < $voucher->min_order_value) {
+                    throw new \Exception("Đơn hàng không đủ giá trị tối thiểu để áp dụng mã giảm giá.");
+                }
+
+                // ✅ Tính giảm giá
+                if ($voucher->type == 'percentage') {
+                    $discountValue = (float) $voucher->discount_value;
+                    $discountAmount = ceil($total * ($discountValue / 100));
+                    // $discountAmount = round($total * ($discountValue / 100));
+
+
+                    // if ($voucher->max_discount) {
+                    //     $discountAmount = min($discountAmount, (float) $voucher->max_discount);
+                    // }
+
+                    // return $discountAmount;
+                } else {
+                    $discountAmount = (float) $voucher->discount_value;
+                }
+
+                // return ($voucher->type == 'percentage');
+                // Cập nhật lượt dùng
+                $voucher->increment('used');
+            }
+
+
+            // 👉 VAT
             $includeVAT = $validated['include_vat'] ?? false;
-            $vatAmount = $includeVAT ? ceil($total * 0.08) : 0;
-            $finalTotal = $total + $vatAmount;
+            $vatAmount = $includeVAT ? ceil(($total - $discountAmount) * 0.08) : 0;
+            $finalTotal = max(0, $total - $discountAmount + $vatAmount);
 
             $order->update([
-                'total' => $finalTotal,
-                'vat_amount' => $vatAmount, // 👉 nếu bạn muốn lưu riêng
+                'total'          => $finalTotal,
+                'vat_amount'     => $vatAmount,
+                'discount_amount' => $discountAmount,
+                'voucher_code'   => $voucherCode,
             ]);
 
             DB::commit();
@@ -879,6 +1061,7 @@ class ClientController extends Controller
             ], 500);
         }
     }
+
 
     private function getDownlines($userId, $maxDepth = 3)
     {
@@ -1146,7 +1329,7 @@ class ClientController extends Controller
         // $count_user_referrer = Order::whereNotNull('referrer_id')
         //     ->distinct('referrer_id')
         //     ->count('referrer_id');
-        $banners = banner::where('position', 3)->where('status', 1)->get();
+        $banners = banner::where('position', 1)->where('status', 1)->get();
         return response()->json([
             'user' => $user,
             'teamSales' => $teamSales,
@@ -2130,38 +2313,38 @@ class ClientController extends Controller
     }
 
     public function indexOrder(Request $request)
-{
-    // Lấy token từ header Authorization
-    $user = null;
-    $authHeader = $request->header('Authorization');
+    {
+        // Lấy token từ header Authorization
+        $user = null;
+        $authHeader = $request->header('Authorization');
 
-    if ($authHeader && preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
-        $token = $matches[1];
-        $accessToken = PersonalAccessToken::findToken($token);
+        if ($authHeader && preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
+            $token = $matches[1];
+            $accessToken = PersonalAccessToken::findToken($token);
 
-        if ($accessToken) {
-            $user = $accessToken->tokenable;
+            if ($accessToken) {
+                $user = $accessToken->tokenable;
+            }
         }
+
+        // Nếu không có user thì trả lỗi 401
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        // Lọc đơn hàng
+        $status = $request->query('status');
+
+        $orders = Order::with('items')
+            ->where('user_id', $user->id)
+            ->when($status && $status !== 'all', function ($query) use ($status) {
+                $query->where('status', $status);
+            })
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json($orders);
     }
-
-    // Nếu không có user thì trả lỗi 401
-    if (!$user) {
-        return response()->json(['message' => 'Unauthorized'], 401);
-    }
-
-    // Lọc đơn hàng
-    $status = $request->query('status'); // e.g., 'pending', 'completed', 'all'
-    
-    $orders = Order::with('items')
-        ->where('user_id', $user->id)
-        ->when($status && $status !== 'all', function ($query) use ($status) {
-            $query->where('status', $status);
-        })
-        ->orderByDesc('created_at')
-        ->get();
-
-    return response()->json($orders);
-}
 
 
     // Lấy chi tiết một đơn hàng cụ thể

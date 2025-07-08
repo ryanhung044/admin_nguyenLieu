@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\VoucherApiController;
 use App\Http\Controllers\CartController;
 use App\Models\Setting;
 use Illuminate\Http\Request;
@@ -56,6 +57,8 @@ Route::get('/api/vnpay/ipn', [ClientController::class, 'handleIPN']);
 Route::get('/orders', [ClientController::class, 'indexOrder']); // danh sách
 Route::get('/orders/{id}', [ClientController::class, 'showOrder']); // chi tiết
 Route::get('/recommended-products', [ClientController::class, 'recommended']);
+Route::get('/vouchers', [VoucherApiController::class, 'index']);
+Route::get('/vouchers/{code}', [VoucherApiController::class, 'show']);
 
 // routes/web.php
 Route::get('/image-proxy', function (Request $request) {

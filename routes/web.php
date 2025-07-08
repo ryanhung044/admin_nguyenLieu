@@ -1,4 +1,5 @@
 <?php
+
 use App\Exports\OrdersExport;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AppSettingController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\VoucherController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Maatwebsite\Excel\Facades\Excel;
@@ -80,6 +82,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('inventorys', [ProductController::class, 'indexStock'])->name('inventory.indexStock');
         Route::resource('commissions', CommissionController::class);
         Route::resource('bank-accounts', BankAccountController::class);
+        Route::resource('vouchers', VoucherController::class);
+
         Route::get('/export/orders', function (Request $request) {
             return Excel::download(new OrdersExport($request), 'danh-sach-don-hang.xlsx');
         })->name('orders.export');
