@@ -45,4 +45,13 @@ class Product extends Model
         return $this->hasMany(ProductVariant::class);
     }
 
+    public function combos()
+    {
+        return $this->hasMany(ProductCombo::class, 'product_id');
+    }
+
+    public function bonusCombos()
+    {
+        return $this->hasMany(ProductCombo::class, 'bonus_product_id');
+    }
 }

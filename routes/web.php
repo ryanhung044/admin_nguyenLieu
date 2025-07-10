@@ -14,6 +14,7 @@ use App\Http\Controllers\CommissionController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductCategoryController;
+use App\Http\Controllers\ProductComboController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VoucherController;
@@ -83,7 +84,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::resource('commissions', CommissionController::class);
         Route::resource('bank-accounts', BankAccountController::class);
         Route::resource('vouchers', VoucherController::class);
-
+        Route::resource('product-combos', ProductComboController::class);
         Route::get('/export/orders', function (Request $request) {
             return Excel::download(new OrdersExport($request), 'danh-sach-don-hang.xlsx');
         })->name('orders.export');

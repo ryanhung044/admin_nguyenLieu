@@ -1,15 +1,22 @@
-# Ignore everything
+# Bỏ qua tất cả
 *
 
-# But allow these specific folders
+# Cho phép các thư mục và file cụ thể
 !app/
 !bootstrap/
 !database/
 !resources/
 !routes/
 
-# Optional: allow these individual files if needed
+# Cho phép các file cần thiết
 !.gitignore
 !composer.json
 !composer.lock
 !artisan
+
+# Cho phép tất cả file bên trong các thư mục đã bật
+!app/**/*
+!bootstrap/**/*
+!database/**/*
+!resources/**/*
+!routes/**/*

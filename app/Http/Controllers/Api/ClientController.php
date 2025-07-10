@@ -56,7 +56,7 @@ class ClientController extends Controller
         }
         $AppSetting = appSetting::first();
         $banners = banner::where('position', 1)->where('status', 1)->get();
-        $products = Product::with('category', 'group', 'variants', 'variants.attributeValues')->latest()->take(10)->get();
+        $products = Product::with('category', 'group', 'variants', 'variants.attributeValues','bonusCombos')->latest()->take(10)->get();
         $articles = article::with('category')->latest()->take(10)->get();
         $menu1 = banner::where('position', 2)->where('status', 1)->get();
         $topProducts = Product::select(
