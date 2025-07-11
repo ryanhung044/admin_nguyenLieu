@@ -17,6 +17,7 @@ use App\Models\CommissionUser;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductCategory;
+use App\Models\ProductCombo;
 use App\Models\ProductVariant;
 use App\Models\Voucher;
 use App\Models\WithdrawRequest;
@@ -56,7 +57,7 @@ class ClientController extends Controller
         }
         $AppSetting = appSetting::first();
         $banners = banner::where('position', 1)->where('status', 1)->get();
-        $products = Product::with('category', 'group', 'variants', 'variants.attributeValues','bonusCombos')->latest()->take(10)->get();
+        $products = Product::with('category', 'group', 'variants.attributeValues.attribute', 'combos.bonusProduct')->latest()->take(10)->get();
         $articles = article::with('category')->latest()->take(10)->get();
         $menu1 = banner::where('position', 2)->where('status', 1)->get();
         $topProducts = Product::select(
@@ -70,7 +71,7 @@ class ClientController extends Controller
             DB::raw('SUM(order_items.quantity) as total_sold'),
         )
             ->join('order_items', 'products.id', '=', 'order_items.product_id')
-            ->with('variants', 'variants.attributeValues') // Load biến thể
+            ->with('variants', 'variants.attributeValues', 'combos.bonusProduct') // Load biến thể
             ->groupBy(
                 'products.id',
                 'products.name',
@@ -331,7 +332,7 @@ class ClientController extends Controller
 
     public function showProduct($slug, Request $request)
     {
-        $product = Product::where('slug', $slug)->firstOrFail();
+        $product = Product::where('slug', $slug)->with('variants.attributeValues')->firstOrFail();
         $variantData = $product->variants->map(function ($variant) {
             return [
                 'attributes' => $variant->attributeValues->pluck('value', 'attribute.name')->toArray(),
@@ -915,7 +916,7 @@ class ClientController extends Controller
                 $user = $accessToken->tokenable;
             }
         }
-
+        // return $user;
         DB::beginTransaction();
 
         try {
@@ -961,6 +962,28 @@ class ClientController extends Controller
                     'referrer_id'      => $referrerId,
                     'commission_amount' => 0
                 ]);
+                // 👉 Kiểm tra và thêm quà tặng nếu có
+                $combos = ProductCombo::where('product_id', $product->id)->get();
+                foreach ($combos as $combo) {
+                    if ($item['quantity'] >= $combo->buy_quantity) {
+                        $bonusQuantity = floor($item['quantity'] / $combo->buy_quantity) * $combo->bonus_quantity;
+                        $bonusProduct = Product::find($combo->bonus_product_id);
+
+                        if ($bonusProduct) {
+                            OrderItem::create([
+                                'order_id'         => $order->id,
+                                'product_id'       => $bonusProduct->id,
+                                'variant_id'       => null,
+                                'product_name'     => $bonusProduct->name . ' (Tặng)',
+                                'thumbnail'        => $bonusProduct->thumbnail,
+                                'price'            => 0, // miễn phí
+                                'quantity'         => $bonusQuantity,
+                                'referrer_id'      => null,
+                                'commission_amount' => 0
+                            ]);
+                        }
+                    }
+                }
 
                 if ($variant) {
                     $variant->decrement('stock', $item['quantity']);
