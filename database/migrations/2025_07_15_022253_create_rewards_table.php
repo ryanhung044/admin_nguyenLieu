@@ -18,7 +18,7 @@ return new class extends Migration
             $table->unsignedInteger('probability'); // xác suất trúng (tính theo % hoặc trọng số)
             $table->unsignedInteger('quantity')->nullable(); // số lượng quà còn lại (null = không giới hạn)
             $table->enum('type', ['point', 'voucher', 'product', 'extra_spin', 'none'])->default('none');
-            $table->unsignedInteger('value')->nullable()->after('type');
+            $table->unsignedInteger('value')->nullable();
             $table->foreignId('product_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('voucher_id')->nullable()->constrained()->nullOnDelete();
             $table->timestamps();
