@@ -16,6 +16,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductComboController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\RewardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VoucherController;
 use Illuminate\Http\Request;
@@ -88,6 +89,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('/export/orders', function (Request $request) {
             return Excel::download(new OrdersExport($request), 'danh-sach-don-hang.xlsx');
         })->name('orders.export');
+        Route::resource('rewards', RewardController::class);
+
     });
     Route::post('/products/upload', [ProductController::class, 'upload'])->name('upload');
     Route::put('/admin/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('admin.orders.updateStatus');

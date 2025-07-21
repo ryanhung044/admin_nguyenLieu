@@ -55,4 +55,11 @@ class Voucher extends Model
             $this->start_date <= $now &&
             $this->end_date >= $now;
     }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'user_vouchers')
+            ->withTimestamps()
+            ->withPivot('used_at');
+    }
 }

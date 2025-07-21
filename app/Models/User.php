@@ -31,6 +31,8 @@ class User extends Authenticatable
         'role',
         'password',
         'referrer_id',
+        'point',
+        'extra_spin',
     ];
 
     /**
@@ -53,5 +55,11 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
+    public function vouchers()
+    {
+        return $this->belongsToMany(Voucher::class, 'user_vouchers')
+            ->withTimestamps()
+            ->withPivot('used_at');
+    }
     
 }

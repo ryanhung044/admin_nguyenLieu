@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\RewardApiController;
 use App\Http\Controllers\Api\VoucherApiController;
 use App\Http\Controllers\CartController;
 use App\Models\Setting;
@@ -59,6 +60,8 @@ Route::get('/orders/{id}', [ClientController::class, 'showOrder']); // chi tiế
 Route::get('/recommended-products', [ClientController::class, 'recommended']);
 Route::get('/vouchers', [VoucherApiController::class, 'index']);
 Route::get('/vouchers/{code}', [VoucherApiController::class, 'show']);
+Route::post('/spin', [RewardApiController::class, 'spin']);
+Route::get('/rewards', [RewardApiController::class, 'getRewards']);
 
 // routes/web.php
 Route::get('/image-proxy', function (Request $request) {
