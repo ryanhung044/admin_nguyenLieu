@@ -14,7 +14,7 @@
     <title>@yield('title', 'Quản lý cửa hàng')</title>
     <meta content="width=device-width, initial-scale=1.0, shrink-to-fit=no" name="viewport" />
     <link rel="icon" href="{{ asset('storage/' . $AppSetting->favicon_path) }}" type="image/x-icon" />
-
+    <meta name="zalo-platform-site-verification" content="VSs4B9Y-AmDxpl04-C9JMWZCtW7akWzOCZOr" />
     <!-- Fonts and icons -->
     <script src="/assets/js/plugin/webfont/webfont.min.js"></script>
     <script>

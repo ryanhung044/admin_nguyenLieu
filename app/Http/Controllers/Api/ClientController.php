@@ -58,6 +58,7 @@ class ClientController extends Controller
         $AppSetting = appSetting::first();
         $banners = banner::where('position', 1)->where('status', 1)->get();
         $products = Product::with('category', 'group', 'variants.attributeValues.attribute', 'combos.bonusProduct')->latest()->take(10)->get();
+        // $products = [];
         $articles = article::with('category')->latest()->take(10)->get();
         $menu1 = banner::where('position', 2)->where('status', 1)->get();
         $topProducts = Product::select(
@@ -84,6 +85,7 @@ class ClientController extends Controller
             ->orderByDesc('total_sold')
             ->take(10)
             ->get();
+        // $topProducts = [];
 
         $finalTop = DB::table('order_items')
             ->select('referrer_id', DB::raw('SUM(price * quantity) as total_sales'))
@@ -1263,6 +1265,7 @@ class ClientController extends Controller
     public function showCategoryById($id)
     {
         $products = Product::where('category_id', $id)->get();
+        // $products = [];
 
         if ($products->isEmpty()) {
             return response()->json(['error' => 'Không có sản phẩm nào trong danh mục này!'], 404);
@@ -2223,10 +2226,13 @@ class ClientController extends Controller
             return response()->json(['message' => 'Thiếu access_token hoặc code'], 400);
         }
 
+        $appsecret_proof= hash_hmac('sha256', $accessToken, env('ZALO_SECRET_KEY')); 
+
         $response = Http::withHeaders([
             'access_token' => $accessToken,
             'code' => $code,
             'secret_key' => env('ZALO_SECRET_KEY'),
+            'appsecret_proof' => $appsecret_proof,
         ])->get('https://graph.zalo.me/v2.0/me/info');
 
         if ($response->successful()) {
@@ -2238,6 +2244,46 @@ class ClientController extends Controller
             'error' => $response->body(),
         ], $response->status());
     }
+
+//     public function getZaloUserInfo(Request $request)
+// {
+//     $accessToken = $request->input('access_token');
+//     $code = $request->input('code');
+
+//     if (!$accessToken || !$code) {
+//         return response()->json(['message' => 'Thiếu access_token hoặc code'], 400);
+//     }
+
+//     $appSecret = env('ZALO_SECRET_KEY');
+//     $appsecret_proof = hash_hmac('sha256', $accessToken, $appSecret);
+
+//     // Gọi API thông tin người dùng
+//     $userInfoRes = Http::get('https://graph.zalo.me/v2.0/me', [
+//         'access_token' => $accessToken,
+//         'appsecret_proof' => $appsecret_proof,
+//     ]);
+
+//     // Gọi API thông tin số điện thoại
+//     $phoneInfoRes = Http::get('https://graph.zalo.me/v2.0/me/phone', [
+//         'access_token' => $accessToken,
+//         'appsecret_proof' => $appsecret_proof,
+//         'code' => $code,
+//     ]);
+
+//     if ($userInfoRes->successful() && $phoneInfoRes->successful()) {
+//         return response()->json([
+//             'user' => $userInfoRes->json(),
+//             'phone' => $phoneInfoRes->json(),
+//         ]);
+//     }
+
+//     return response()->json([
+//         'message' => 'Lỗi khi gọi Zalo API',
+//         'user_response' => $userInfoRes->body(),
+//         'phone_response' => $phoneInfoRes->body(),
+//     ], 400);
+// }
+
     public function sendMessage(Request $request)
     {
         $accessToken = env('ZALO_OA_ACCESS_TOKEN');
@@ -2404,7 +2450,7 @@ class ClientController extends Controller
             ->orWhere('slug', 'like', "%{$keyword}%")
             ->limit(20)
             ->get();
-
+        $products = [];
         return response()->json([
             'success' => true,
             'data' => $products
