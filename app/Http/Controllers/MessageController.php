@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Message;
 use App\Http\Requests\StoreMessageRequest;
 use App\Http\Requests\UpdateMessageRequest;
+use Illuminate\Http\Request;
 
 class MessageController extends Controller
 {
@@ -28,10 +29,22 @@ class MessageController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreMessageRequest $request)
+    public function store(Request $request)
     {
-        //
+        $request->validate([
+            'conversation_id' => 'required|exists:conversations,id',
+            'content' => 'required|string',
+        ]);
+
+        Message::create([
+            'conversation_id' => $request->conversation_id,
+            'sender' => 'admin', // hoặc lấy từ Auth
+            'content' => $request->content,
+        ]);
+
+        return back()->with('success', 'Đã gửi tin nhắn');
     }
+
 
     /**
      * Display the specified resource.
