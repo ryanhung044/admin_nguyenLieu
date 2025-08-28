@@ -68,6 +68,7 @@
     <meta property="og:site_name" content="{{ $AppSetting->app_name }}">
     <meta property="og:description" content="{{ $AppSetting->description ?? $AppSetting->app_name }}">
     <meta property="og:image" content="{{ asset('storage/' . $AppSetting->logo_path) }}">
+    <meta name="zalo-platform-site-verification" content="VSs4B9Y-AmDxpl04-C9JMWZCtW7akWzOCZOr" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link rel="icon" href="{{ asset('storage/' . $AppSetting->favicon_path) }}" type="image/x-icon" />
