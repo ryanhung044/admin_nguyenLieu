@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Order;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::where('role','!=', 'admin')->get();
+        $users = User::where('role', '!=', 'admin')->get();
         return view('admin.user.index', compact('users'));
     }
 
@@ -217,5 +218,33 @@ class UserController extends Controller
         $referrers = User::find($referrerId);
         session(['referrer_id' => $referrerId]);
         return view('referrer', compact('referrers', 'user'));
+    }
+
+    // app/Http/Controllers/Admin/UserController.php
+    public function detail($id)
+    {
+        $user = User::with('orders.items')->findOrFail($id);
+
+        $orders = $user->orders->sortByDesc('created_at');
+
+        $totalOrders = $orders->count();
+        $totalDays = $orders->pluck('created_at')->map(fn($d) => Carbon::parse($d)->toDateString())->unique()->count();
+        $totalProducts = $orders->flatMap->items->sum('quantity');
+        $totalPoints = $user->point ?? 0;
+        $totalAmount = $orders->sum('total'); // giả định trường `total_amount`
+
+        $firstOrder = $orders->sortBy('created_at')->first();
+        $lastOrder  = $orders->sortByDesc('created_at')->first();
+        return view('admin.user.detail', compact(
+            'user',
+            'totalOrders',
+            'totalDays',
+            'totalProducts',
+            'totalPoints',
+            'totalAmount',
+            'firstOrder',
+            'lastOrder',
+            'orders'
+        ));
     }
 }

@@ -90,7 +90,8 @@ Route::middleware(['auth', 'admin'])->group(function () {
             return Excel::download(new OrdersExport($request), 'danh-sach-don-hang.xlsx');
         })->name('orders.export');
         Route::resource('rewards', RewardController::class);
-
+        // routes/web.php
+        Route::get('/users/{id}/detail', [UserController::class, 'detail'])->name('admin.users.detail');
     });
     Route::post('/products/upload', [ProductController::class, 'upload'])->name('upload');
     Route::put('/admin/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('admin.orders.updateStatus');

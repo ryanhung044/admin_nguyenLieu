@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\RewardApiController;
 use App\Http\Controllers\Api\VoucherApiController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\ConversationController;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -73,10 +74,12 @@ Route::get('/image-proxy', function (Request $request) {
         ->header('Access-Control-Allow-Origin', '*');
 });
 Route::post('/zalo/user-info', [ClientController::class, 'getZaloUserInfo']);
-Route::get('/config/withdraw', function () {
-    return response()->json([
-        'withdraw_enabled' => (bool) Setting::getValue('withdraw_enabled', false)
-    ]);
-});
+// Route::get('/config/withdraw', function () {
+//     return response()->json([
+//         'withdraw_enabled' => (bool) Setting::getValue('withdraw_enabled', false)
+//     ]);
+// });
 Route::post('/cart/refresh', [ClientController::class, 'refreshCart'])->name('refreshCart');
 Route::post('/order/update-status-payment', [ClientController::class, 'updateStatusPayment'])->name('updateStatusPayment');
+Route::post('/webhook/zalo', [ConversationController::class, 'zalo']);
+Route::post('/webhook/facebook', [ConversationController::class, 'facebook']);

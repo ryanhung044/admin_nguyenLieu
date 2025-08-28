@@ -29,16 +29,22 @@
                     <td>
 
                         @if ($user->avatar)
-                           @if (Str::startsWith($user->avatar, ['http://', 'https://']))
+                            @if (Str::startsWith($user->avatar, ['http://', 'https://']))
                                 <img src="{{ $user->avatar }}" width="50" alt="">
                             @else
                                 <img src="{{ asset('storage/' . $user->avatar) }}" width="50" alt="">
                             @endif
                         @else
-                            <img src="https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg" width="50" alt="">
+                            <img src="https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg"
+                                width="50" alt="">
                         @endif
                     </td>
-                    <td>{{ $user->full_name }}</td>
+                    <td>
+                        <a href="#" class="user-detail-link" data-id="{{ $user->id }}">
+                            {{ $user->full_name }}
+                        </a>
+                    </td>
+
                     <td>{{ $user->phone }}</td>
                     <td>
                         @if ($user->gender === 'male')
@@ -64,27 +70,47 @@
             @endforeach
         </tbody>
     </table>
-@endsection
-
-@push('scripts')
+    <!-- Modal hiển thị thông tin chi tiết -->
+    <div class="modal fade" id="userDetailModal" tabindex="-1" role="dialog" aria-labelledby="userDetailModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Thông tin khách hàng</h5>
+                </div>
+                <div class="modal-body">
+                    <!-- Nội dung được load động -->
+                    <div id="userDetailContent">
+                        <p class="text-muted">Đang tải...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script>
         $(document).ready(function() {
-            $('#productTable').DataTable({
-                "language": {
-                    "search": "Tìm kiếm:",
-                    "lengthMenu": "Hiển thị _MENU_ mục",
-                    "info": "Hiển thị _START_ đến _END_ trong _TOTAL_ mục",
-                    "paginate": {
-                        "first": "Đầu",
-                        "last": "Cuối",
-                        "next": "Tiếp",
-                        "previous": "Trước"
+            $('.user-detail-link').click(function(e) {
+                e.preventDefault();
+
+                var userId = $(this).data('id');
+                // return console.log(userId);
+
+                $('#userDetailContent').html('<p class="text-muted">Đang tải...</p>');
+                $('#userDetailModal').modal('show');
+
+                $.ajax({
+                    url: '/admin/users/' + userId + '/detail',
+                    type: 'GET',
+                    success: function(data) {
+                        $('#userDetailContent').html(data);
                     },
-                    "zeroRecords": "Không tìm thấy dữ liệu",
-                    "infoEmpty": "Không có dữ liệu",
-                    "infoFiltered": "(lọc từ _MAX_ mục)"
-                }
+                    error: function() {
+                        $('#userDetailContent').html(
+                            '<p class="text-danger">Không thể tải dữ liệu khách hàng.</p>');
+                    }
+                });
             });
         });
     </script>
-@endpush
+@endsection
