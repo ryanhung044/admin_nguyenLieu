@@ -11,6 +11,8 @@ use App\Http\Controllers\BannerController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CommissionController;
+use App\Http\Controllers\ConversationController;
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductCategoryController;
@@ -92,6 +94,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::resource('rewards', RewardController::class);
         // routes/web.php
         Route::get('/users/{id}/detail', [UserController::class, 'detail'])->name('admin.users.detail');
+        Route::get('/conversations', [ConversationController::class, 'index'])->name('conversations.index');
+        Route::get('/conversations/{id}', [ConversationController::class, 'show'])->name('conversations.show');
+
+        Route::get('messages', [MessageController::class, 'index'])->name('messages.index');
     });
     Route::post('/products/upload', [ProductController::class, 'upload'])->name('upload');
     Route::put('/admin/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('admin.orders.updateStatus');

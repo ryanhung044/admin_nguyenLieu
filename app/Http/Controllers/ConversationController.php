@@ -76,4 +76,17 @@ class ConversationController extends Controller
         return response()->json(['status' => 'ok']);
     }
 
+    public function index()
+    {
+        $conversations = Conversation::latest()->paginate(20);
+        return view('admin.conversations.index', compact('conversations'));
+    }
+
+    public function show($id)
+    {
+        $conversation = Conversation::with('messages')->findOrFail($id);
+        return view('admin.conversations.show', compact('conversation'));
+    }
+
+
 }

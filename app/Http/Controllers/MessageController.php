@@ -13,7 +13,8 @@ class MessageController extends Controller
      */
     public function index()
     {
-        //
+        $messages = Message::with('conversation')->latest()->paginate(20);
+        return view('admin.messages.index', compact('messages'));
     }
 
     /**
