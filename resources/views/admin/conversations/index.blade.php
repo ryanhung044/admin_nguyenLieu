@@ -1,43 +1,26 @@
 @extends('admin.layout')
 
 @section('content')
-    <div>
-        <h1 class="mb-4">Danh sách hội thoại</h1>
-
-        <table class="table table-bordered table-striped">
-            <thead>
-                <tr>
-                    <th>Platform</th>
-                    <th>External ID</th>
-                    <th>Tin nhắn cuối</th>
-                    <th>Thời gian</th>
-                    <th>Hành động</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($conversations as $conv)
-                    <tr>
-                        <td>
-                            <span class="badge bg-{{ $conv->platform == 'zalo' ? 'info' : 'primary' }}">
-                                {{ ucfirst($conv->platform) }}
-                            </span>
-                        </td>
-                        <td>{{ $conv->external_id }}</td>
-                        <td>{{ $conv->last_message }}</td>
-                        <td>
-                            {{ $conv->last_time ? \Carbon\Carbon::parse($conv->last_time)->format('d/m/Y H:i') : '' }}
-                        </td>
-
-                        <td>
-                            <a href="{{ route('admin.conversations.show', $conv->id) }}" class="btn btn-sm btn-success">
-                                Xem chi tiết
-                            </a>
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-
-        {{ $conversations->links() }}
+<div class="chat-container">
+    <h3>Hội thoại với: {{ $conversation->external_id }}</h3>
+    <div class="chat-box border p-3 mb-3" style="height:400px; overflow-y:auto;">
+        @foreach($messages as $msg)
+            <div class="mb-2 {{ $msg->sender == 'admin' ? 'text-end' : '' }}">
+                <span class="badge bg-{{ $msg->sender == 'admin' ? 'success' : 'secondary' }}">
+                    {{ $msg->sender }}
+                </span>
+                <div class="d-inline-block p-2 rounded {{ $msg->sender == 'admin' ? 'bg-success text-white' : 'bg-light' }}">
+                    {{ $msg->content }}
+                </div>
+                <small class="d-block text-muted">{{ $msg->created_at->format('d/m/Y H:i') }}</small>
+            </div>
+        @endforeach
     </div>
+
+    <form action="{{ route('admin.conversations.send', $conversation->id) }}" method="POST" class="d-flex">
+        @csrf
+        <input type="text" name="content" class="form-control me-2" placeholder="Nhập tin nhắn...">
+        <button type="submit" class="btn btn-primary">Gửi</button>
+    </form>
+</div>
 @endsection

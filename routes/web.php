@@ -96,7 +96,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('/users/{id}/detail', [UserController::class, 'detail'])->name('admin.users.detail');
         Route::get('/conversations', [ConversationController::class, 'index'])->name('conversations.index');
         Route::get('/conversations/{id}', [ConversationController::class, 'show'])->name('conversations.show');
-
+        Route::post('conversations/{id}/send', [ConversationController::class, 'sendMessage'])->name('conversations.send');
         Route::get('messages', [MessageController::class, 'index'])->name('messages.index');
     });
     Route::post('/products/upload', [ProductController::class, 'upload'])->name('upload');
