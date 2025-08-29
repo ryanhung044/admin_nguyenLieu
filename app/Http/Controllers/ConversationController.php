@@ -115,15 +115,17 @@ class ConversationController extends Controller
 
         $event     = $request->input('event_name');
         $senderId  = $request->input('sender.id') ?? $request->input('from.id');
+        $userId = $request->input('sender.id') ?? $request->input('user_id_by_app');
 
-        if (!$senderId) {
-            Log::warning("Webhook missing senderId", $request->all());
+        // Nếu thiếu thì bỏ qua
+        if (!$senderId || !$userId) {
+            Log::warning("Webhook missing oaId/userId", $request->all());
             return response()->json(['status' => 'ignored']);
         }
 
         // Lấy hoặc tạo Conversation
         $conversation = Conversation::firstOrCreate(
-            ['platform' => 'zalo', 'external_id' => $senderId],
+            ['platform' => 'zalo', 'external_id' => $senderId, 'user_id'  => $userId],
             ['last_message' => '', 'last_time' => now()]
         );
 
