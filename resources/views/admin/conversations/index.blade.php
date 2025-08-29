@@ -1,26 +1,50 @@
 @extends('admin.layout')
 
-@section('content')
-<div class="chat-container">
-    <h3>Hội thoại với: {{ $conversation->external_id }}</h3>
-    <div class="chat-box border p-3 mb-3" style="height:400px; overflow-y:auto;">
-        @foreach($messages as $msg)
-            <div class="mb-2 {{ $msg->sender == 'admin' ? 'text-end' : '' }}">
-                <span class="badge bg-{{ $msg->sender == 'admin' ? 'success' : 'secondary' }}">
-                    {{ $msg->sender }}
-                </span>
-                <div class="d-inline-block p-2 rounded {{ $msg->sender == 'admin' ? 'bg-success text-white' : 'bg-light' }}">
-                    {{ $msg->content }}
-                </div>
-                <small class="d-block text-muted">{{ $msg->created_at->format('d/m/Y H:i') }}</small>
-            </div>
-        @endforeach
-    </div>
+@section('title', 'Danh sách hội thoại')
 
-    <form action="{{ route('admin.conversations.send', $conversation->id) }}" method="POST" class="d-flex">
-        @csrf
-        <input type="text" name="content" class="form-control me-2" placeholder="Nhập tin nhắn...">
-        <button type="submit" class="btn btn-primary">Gửi</button>
-    </form>
+@section('content')
+<div class="container">
+    <h1 class="mb-4">Danh sách hội thoại</h1>
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Nền tảng</th>
+                <th>External ID</th>
+                <th>Người dùng</th>
+                <th>Tin nhắn cuối</th>
+                <th>Thời gian cuối</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($conversations as $index => $conv)
+                <tr>
+                    <td>{{ $conversations->firstItem() + $index }}</td>
+                    <td>{{ $conv->platform }}</td>
+                    <td>{{ $conv->external_id }}</td>
+                    <td>{{ $conv->user_id }}</td>
+                    <td>{{ $conv->last_message }}</td>
+                    <td>
+                        {{ $conv->last_time ? \Carbon\Carbon::parse($conv->last_time)->format('d/m/Y H:i') : '' }}
+                    </td>
+                    <td>
+                        <a href="{{ route('admin.conversations.show', $conv->id) }}" class="btn btn-sm btn-primary">
+                            Xem chi tiết
+                        </a>
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="7" class="text-center">Không có hội thoại nào</td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
+
+    <div>
+        {{ $conversations->links() }}
+    </div>
 </div>
 @endsection

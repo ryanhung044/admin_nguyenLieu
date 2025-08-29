@@ -169,26 +169,30 @@ class ConversationController extends Controller
      * Gửi tin nhắn trong hội thoại
      */
     public function sendMessage(Request $request, $id)
-    {
-        $conversation = Conversation::findOrFail($id);
+{
+    $conversation = Conversation::findOrFail($id);
 
-        $request->validate([
-            'content' => 'required|string|max:1000',
-        ]);
+    $request->validate([
+        'content' => 'required|string|max:1000',
+    ]);
 
-        // Lưu tin nhắn
-        $message = new Message();
-        $message->conversation_id = $conversation->id;
-        $message->sender = 'admin'; // hoặc auth()->user()->id
-        $message->content = $request->content;
-        $message->save();
+    // Lưu tin nhắn
+    $message = $conversation->messages()->create([
+        'sender_type'   => 'admin',
+        'message_type'  => 'text',
+        'message_text'  => $request->content,
+        'sent_at'       => now(),
+    ]);
 
-        // Cập nhật hội thoại
-        $conversation->last_message = $request->content;
-        $conversation->last_time = Carbon::now();
-        $conversation->save();
+    // Cập nhật hội thoại
+    $conversation->update([
+        'last_message' => $request->content,
+        'last_time'    => now(),
+    ]);
 
-        return redirect()->route('admin.conversations.show', $conversation->id)
-            ->with('success', 'Tin nhắn đã được gửi.');
-    }
+    return redirect()
+        ->route('admin.conversations.show', $conversation->id)
+        ->with('success', 'Tin nhắn đã được gửi.');
+}
+
 }
