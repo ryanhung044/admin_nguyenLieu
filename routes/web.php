@@ -97,6 +97,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('/conversations', [ConversationController::class, 'index'])->name('conversations.index');
         Route::get('/conversations/{id}', [ConversationController::class, 'show'])->name('conversations.show');
         Route::post('conversations/{id}/send', [ConversationController::class, 'sendMessage'])->name('conversations.send');
+        Route::get('syncRecentChats', [ConversationController::class, 'syncRecentChats'])->name('conversations.syncRecentChats');
         Route::get('messages', [MessageController::class, 'index'])->name('messages.index');
         Route::post('messages', [MessageController::class, 'store'])->name('messages.store');
 

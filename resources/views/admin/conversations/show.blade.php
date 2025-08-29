@@ -29,11 +29,30 @@
             </div>
             <div class="card-body" style="height: 500px; overflow-y: auto; background: #f9f9f9;">
                 @foreach ($messages as $msg)
-                    <div class="d-flex mb-3 {{ $msg->sender == 'admin' ? 'justify-content-end' : 'justify-content-start' }}">
+                    <div class="d-flex mb-3 {{ $msg->sender_type == 'admin' ? 'justify-content-end' : 'justify-content-start' }}">
                         <div class="p-2 rounded 
-                            {{ $msg->sender == 'admin' ? 'bg-primary text-white' : 'bg-light border' }}"
+                            {{ $msg->sender_type == 'admin' ? 'bg-primary text-white' : 'bg-light border' }}"
                             style="max-width: 70%;">
-                            <div>{{ $msg->content }}</div>
+                            
+                            {{-- Hiển thị tùy theo loại message --}}
+                            @if ($msg->message_type === 'text')
+                                <div>{{ $msg->message_text }}</div>
+                            
+                            @elseif ($msg->message_type === 'image')
+                                <div>
+                                    <img src="{{ $msg->message_text }}" alt="image" class="img-fluid rounded">
+                                </div>
+                            
+                            @elseif ($msg->message_type === 'sticker')
+                                <div>[Sticker ID: {{ $msg->message_text }}]</div>
+                            
+                            @elseif ($msg->message_type === 'event')
+                                <div class="text-muted fst-italic">{{ $msg->message_text }}</div>
+                            
+                            @else
+                                <div>[Không xác định]</div>
+                            @endif
+
                             <small class="text-muted d-block mt-1" style="font-size: 12px;">
                                 {{ \Carbon\Carbon::parse($msg->created_at)->format('d/m/Y H:i') }}
                             </small>
@@ -43,7 +62,7 @@
             </div>
 
             <div class="card-footer">
-                <form action="{{ route('admin.messages.store', $conversation->id) }}" method="POST">
+                <form action="{{ route('admin.conversations.send', $conversation->id) }}" method="POST">
                     @csrf
                     <div class="input-group">
                         <input type="text" name="content" class="form-control" placeholder="Nhập tin nhắn..." required>
