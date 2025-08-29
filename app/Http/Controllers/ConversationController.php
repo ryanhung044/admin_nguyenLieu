@@ -188,6 +188,35 @@ class ConversationController extends Controller
                 $status = $request->input('status');
                 $this->storeMessage($conversation, 'system', 'oa_send_status', "KQ gửi OA: $status");
                 break;
+            case 'oa_send_text':
+                $text = $request->input('message.text');
+                $conversation->messages()->create([
+                    'sender_type' => 'admin',
+                    'message_type' => 'text',
+                    'message_text' => $text,
+                    'sent_at'     => now(),
+                ]);
+
+                $conversation->update([
+                    'last_message' => $text,
+                    'last_time'    => now(),
+                ]);
+                break;
+            case 'user_received_message':
+                $msgId = $request->input('message.msg_id');
+                $conversation->messages()->create([
+                    'sender_type'  => 'system',
+                    'message_type' => 'event',
+                    'message_text' => "User đã nhận tin nhắn ID: $msgId",
+                    'sent_at'      => now(),
+                ]);
+
+                $conversation->update([
+                    'last_message' => '[User đã nhận tin]',
+                    'last_time'    => now(),
+                ]);
+                break;
+
 
             case 'broadcast_result':
                 $brId = $request->input('broadcast_id');
