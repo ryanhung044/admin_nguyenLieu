@@ -6,6 +6,7 @@ use App\Models\Conversation;
 use App\Http\Requests\StoreConversationRequest;
 use App\Http\Requests\UpdateConversationRequest;
 use App\Models\Message;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -132,9 +133,36 @@ class ConversationController extends Controller
             ['user_id' => $externalId, 'last_message' => '', 'last_time' => now()]
         );
 
-        // if (empty($conversation->user_name) || empty($conversation->avatar)) {
-        //     $this->updateZaloUserProfile($conversation, $externalId);
-        // }
+        // 2) Kiểm tra trong DB đã có user với zalo_id này chưa
+        $user = User::where('zalo_id', $externalId)->first();
+
+        if (!$user) {
+            // 🔹 Lấy access_token
+            $accessToken = $this->getZaloAccessToken();
+
+            // 🔹 Gọi API lấy thông tin user từ Zalo
+            $url = "https://openapi.zalo.me/v2.0/oa/getprofile";
+            $response = Http::withHeaders([
+                'access_token' => $accessToken,
+            ])->get($url, [
+                'user_id' => $externalId,
+            ]);
+
+            $data = $response->json();
+            Log::info("Zalo getprofile response", $data);
+
+            $name   = $data['data']['display_name'] ?? 'Zalo User';
+            $avatar = $data['data']['avatar'] ?? null;
+
+            // 🔹 Tạo mới user
+            $user = User::create([
+                'name'     => $name,
+                'full_name' => $name,
+                'avatar'   => $avatar,
+                'zalo_id'  => $externalId,
+                'role'     => 'user',
+            ]);
+        }
         switch ($event) {
             /** ----------------
              *  USER SEND EVENTS
