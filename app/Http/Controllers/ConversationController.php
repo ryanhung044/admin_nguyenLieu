@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateConversationRequest;
 use App\Models\Message;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -317,7 +318,7 @@ class ConversationController extends Controller
         return null;
     }
 
-    
+
     private function storeMessage(Conversation $conversation, string $senderType, string $msgType, ?string $msgText)
     {
         $conversation->messages()->create([
@@ -331,59 +332,7 @@ class ConversationController extends Controller
             'last_message' => $msgText,
             'last_time'    => now(),
         ]);
-
-        if ($senderType === 'admin') {
-            $this->sendMessageToUser($conversation->user_id, $msgText);
-        }
     }
-
-    private function sendMessageToUser($userId, string $message)
-{
-    $accessToken = env('ZALO_OA_ACCESS_TOKEN'); // lưu trong .env
-    $url = "https://openapi.zalo.me/v3.0/oa/message/cs";
-
-    $payload = [
-        "recipient" => [
-            "user_id" => $userId
-        ],
-        "message" => [
-            "text" => $message
-        ]
-    ];
-
-    $client = new \GuzzleHttp\Client();
-    try {
-        $response = $client->post($url, [
-            'headers' => [
-                'Content-Type'  => 'application/json',
-                'access_token'  => $accessToken,
-            ],
-            'json' => $payload,
-        ]);
-
-        $body = json_decode($response->getBody(), true);
-
-        // Ghi log để theo dõi
-        Log::info('Zalo API Response', [
-            'user_id' => $userId,
-            'payload' => $payload,
-            'response' => $body,
-        ]);
-
-        return $body;
-    } catch (\Exception $e) {
-        Log::error('Zalo API Error', [
-            'user_id' => $userId,
-            'payload' => $payload,
-            'error' => $e->getMessage(),
-        ]);
-        return false;
-    }
-}
-
-
-
-
 
 
     // Facebook webhook
@@ -442,27 +391,6 @@ class ConversationController extends Controller
         return view('admin.conversations.show', compact('conversation', 'messages'));
     }
 
-    private function getZaloAccessToken()
-    {
-        $appId = env('APP_ID');
-        $appSecret = env('ZALO_SECRET_KEY');
-        $refreshToken = env('ZALO_OA_REFRESH_TOKEN'); // cái này bạn tạo 1 lần trên OA dev portal
-
-        $response = Http::asForm()->post('https://oauth.zaloapp.com/v4/oa/access_token', [
-            'app_id'        => $appId,
-            'app_secret'    => $appSecret,
-            'refresh_token' => $refreshToken,
-            'grant_type'    => 'refresh_token',
-        ]);
-
-        if ($response->failed()) {
-            throw new \Exception('Không lấy được Zalo Access Token: ' . $response->body());
-        }
-
-        $data = $response->json();
-        return $data['access_token'] ?? null;
-    }
-
     public function sendMessage(Request $request, $id)
     {
         $conversation = Conversation::findOrFail($id);
@@ -471,27 +399,8 @@ class ConversationController extends Controller
             'content' => 'required|string|max:1000',
         ]);
 
-        // 1. Lấy access_token mới nhất
-        try {
-            $accessToken = $this->getZaloAccessToken();
-        } catch (\Exception $e) {
-            return back()->with('error', $e->getMessage());
-        }
+        $this->sendMessageToUser($conversation->external_id, $request->content);
 
-        // 2. Gửi API đến Zalo OA
-        $response = Http::withToken($accessToken)
-            ->post('https://openapi.zalo.me/v3.0/oa/message/cs', [
-                'recipient' => [
-                    'user_id' => $conversation->external_id,
-                ],
-                'message' => [
-                    'text' => $request->content,
-                ],
-            ]);
-
-        if ($response->failed()) {
-            return back()->with('error', 'Gửi tin nhắn OA thất bại: ' . $response->body());
-        }
 
         // 3. Lưu DB
         $conversation->messages()->create([
@@ -510,6 +419,88 @@ class ConversationController extends Controller
             ->route('admin.conversations.show', $conversation->id)
             ->with('success', 'Tin nhắn đã được gửi thành công.');
     }
+
+
+    private function getZaloAccessToken(): ?string
+    {
+        // Cache token để không gọi API liên tục (expires_in ~3600s)
+        return Cache::remember('zalo_oa_access_token', 3500, function () {
+            $appId        = env('ZALO_APP_ID');
+            $appSecret    = env('ZALO_SECRET_KEY');        // secret_key của app/OA
+            $refreshToken = env('ZALO_OA_REFRESH_TOKEN'); // refresh token bạn lưu
+
+            $url = "https://oauth.zaloapp.com/v4/oa/access_token";
+
+            try {
+                // Gọi theo form x-www-form-urlencoded, và ĐẶT header secret_key
+                $resp = Http::asForm()
+                    ->withHeaders([
+                        'secret_key'   => $appSecret,
+                        'Content-Type' => 'application/x-www-form-urlencoded',
+                    ])->post($url, [
+                        'app_id'        => $appId,
+                        'refresh_token' => $refreshToken,
+                        'grant_type'    => 'refresh_token',
+                    ]);
+
+                $data = $resp->json();
+                Log::info('Zalo getAccessToken response', $data);
+
+                // Một số biến thể API trả access_token ở data['access_token'] hoặc data['data']['access_token']:
+                if (!empty($data['access_token'])) {
+                    return $data['access_token'];
+                }
+                if (!empty($data['data']['access_token'])) {
+                    return $data['data']['access_token'];
+                }
+
+                // Nếu không có token, log rõ để debug
+                Log::error('Zalo getAccessToken failed', $data);
+                return null;
+            } catch (\Throwable $e) {
+                Log::error('Zalo getAccessToken exception: ' . $e->getMessage());
+                return null;
+            }
+        });
+    }
+
+
+    private function sendMessageToUser($userId, string $message)
+    {
+        $accessToken = $this->getZaloAccessToken();
+        $url = "https://openapi.zalo.me/v3.0/oa/message/cs";
+
+        $payload = [
+            "recipient" => [
+                "user_id" => $userId
+            ],
+            "message" => [
+                "text" => $message
+            ]
+        ];
+
+        $client = new \GuzzleHttp\Client();
+
+        try {
+            $response = $client->post($url, [
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'access_token' => $accessToken, // ✅ Đặt access_token trong header
+                ],
+                'json' => $payload,
+            ]);
+
+            $body = json_decode($response->getBody()->getContents(), true);
+            Log::info('Zalo sendMessage response', $body); // log vào storage/logs/laravel.log
+            dd($body);
+
+            return $body;
+        } catch (\Exception $e) {
+            Log::error("Send message error: " . $e->getMessage());
+            return false;
+        }
+    }
+
     private function fetchRecentChatsFromZalo(int $offset = 0, int $count = 20): array
     {
         $accessToken = 'AGCn7B98zr4l13qRiqRoKYWAFHw_Nu8mSaCxB9P-zM41RtrKn23BPpC_Ucwg9h5CR3WPHumqeLXqOcj4icxPUt132cowKwTSKHuVLvLHjNPsNm1-imd9IL13OdkxUQvEUJKbHAmwYLDc83j6YssCJnL1D7h0K9vN6a0ZGl89ZM0E4GDGwWR8HYym1rp93Bz7AW83PxKJjqmhEGS4uW2n3WvFFq370VPmK0jOEia1zWm0Gbb4tctoRZexGLtdBkjjS1flNRKNnqfW0tHGa0gpPbK256-k6wjwOnPWORmggb9sFWLPcYIyH4mM46IhDDfqJNbIG8rg-qnEP7K3Zt3Y4LbIUpgTHS1qV7PGFub7z153I5eihM7YFKDxR0tKG_0IIsXw78TTiIqUQZXWq7ALB3DXA3l4SEGEUQzx_dYoLlnT'; // sử dụng hàm đã tạo để lấy token
