@@ -115,23 +115,36 @@ class ConversationController extends Controller
 
         $event = $request->input('event_name');
 
-        // Luôn xác định userId (người đang chat với OA)
-        $userId = $request->input('user_id_by_app')
-            ?? $request->input('sender.id')
-            ?? $request->input('from.id');
+        // Luôn xác định userId khách (external_id)
+        $userId = $request->input('sender.id')
+            ?? $request->input('from.id')
+            ?? $request->input('user_id_by_app');
 
-        // Nếu không có userId thì bỏ qua
+        // Nếu không có userId (tức là event từ OA/admin), 
+        // thì lấy từ conversation hiện tại (truy ngược theo message_id nếu có)
+        if (!$userId) {
+            $msgId = $request->input('message.msg_id');
+            if ($msgId) {
+                $conv = Message::where('platform', 'zalo')
+                    ->where('message_id', $msgId)
+                    ->first();
+                $userId = $conv?->conversation?->external_id;
+            }
+        }
+
+        // Nếu vẫn không có userId thì bỏ qua
         if (!$userId) {
             Log::warning("Webhook missing userId", $request->all());
             return response()->json(['status' => 'ignored']);
         }
 
-        // external_id chính là userId của khách
+        // external_id = userId khách
         $externalId = $userId;
 
+        // conversation của user này (chỉ tạo mới nếu user nhắn lần đầu)
         $conversation = Conversation::firstOrCreate(
             ['platform' => 'zalo', 'external_id' => $externalId],
-            ['user_id' => $userId, 'last_message' => '', 'last_time' => now()]
+            ['user_id' => $externalId, 'last_message' => '', 'last_time' => now()]
         );
 
         switch ($event) {
