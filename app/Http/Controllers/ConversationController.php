@@ -113,58 +113,19 @@ class ConversationController extends Controller
     {
         Log::info('Zalo Webhook', $request->all());
 
-        $event = $request->input('event_name');
+        $event = (string)$request->input('event_name');
 
-        // Luôn xác định userId khách (external_id)
-        // Luôn xác định external_id = id của user khách
-        $userId = $request->input('sender.id')
-            ?? $request->input('from.id')
-            ?? $request->input('user_id_by_app');
+        // 1) Resolve external_id: luôn là ID của USER (không bao giờ là OA)
+        $externalId = $this->resolveExternalUserId($request, $event);
 
-        // Nếu không có userId (trường hợp OA gửi)
-        // thì tìm conversation cũ theo message_id hoặc lấy từ payload
-        if (!$userId) {
-            $msgId = $request->input('message.msg_id');
-
-            if ($msgId) {
-                $conv = Message::where('platform', 'zalo')
-                    ->where('message_id', $msgId)
-                    ->first();
-                $userId = $conv?->conversation?->external_id;
-            }
-        }
-
-        // Nếu vẫn không có userId → bỏ qua (KHÔNG tạo conversation mới)
-        if (!$userId) {
-            Log::warning("Webhook missing userId", $request->all());
+        // Nếu chưa resolve được, bỏ qua để tránh tạo Conversation sai
+        if (!$externalId) {
+            Log::warning("Webhook cannot resolve external user id", $request->all());
             return response()->json(['status' => 'ignored']);
         }
 
-        $externalId = $userId;
-
-        // Chỉ tạo conversation nếu đây là lần ĐẦU user nhắn tới OA
-        $conversation = Conversation::where('platform', 'zalo')
-            ->where('external_id', $externalId)
-            ->first();
-
-        if (!$conversation && str_starts_with($event, 'user_send_')) {
-            $conversation = Conversation::create([
-                'platform'     => 'zalo',
-                'external_id'  => $externalId,
-                'user_id'      => $externalId,
-                'last_message' => '',
-                'last_time'    => now(),
-            ]);
-        } elseif (!$conversation) {
-            // OA gửi mà chưa từng có conversation thì bỏ qua
-            Log::warning("OA event without conversation", $request->all());
-            return response()->json(['status' => 'ignored']);
-        }
-
-        // external_id = userId khách
-        $externalId = $userId;
-
-        // conversation của user này (chỉ tạo mới nếu user nhắn lần đầu)
+        // 2) Dùng (platform, external_id) làm khóa duy nhất cho 1 cuộc chat
+        //    -> Không bao giờ tạo conversation mới khi external_id trùng
         $conversation = Conversation::firstOrCreate(
             ['platform' => 'zalo', 'external_id' => $externalId],
             ['user_id' => $externalId, 'last_message' => '', 'last_time' => now()]
@@ -288,6 +249,48 @@ class ConversationController extends Controller
 
         return response()->json(['status' => 'ok']);
     }
+
+    private function resolveExternalUserId(Request $request, string $event): ?string
+    {
+        $oaId = (string)config('services.zalo.oa_id'); // đặt ENV nếu có: ZALO_OA_ID=7380...
+
+        // 1) Event do user khởi phát
+        if (str_starts_with($event, 'user_') || in_array($event, ['follow', 'unfollow', 'user_click_menu', 'reopen_chat'])) {
+            $uid = $request->input('sender.id')
+                ?? $request->input('from.id')
+                ?? $request->input('user_id')
+                ?? $request->input('user_id_by_app');
+
+            if ($uid && $uid !== $oaId) return (string)$uid;
+        }
+
+        // 2) Event do OA khởi phát / trạng thái giao nhận
+        //    -> user là "recipient" / "to"
+        $uid = $request->input('recipient.id')
+            ?? $request->input('to.id')
+            ?? $request->input('to_user_id')
+            ?? data_get($request->input('message', []), 'to_uid')
+            ?? data_get($request->input('message', []), 'user_id')
+            ?? null;
+
+        if ($uid && $uid !== $oaId) return (string)$uid;
+
+        // 3) Fallback: truy ngược theo msg_id (nếu bạn có lưu mapping)
+        $msgId = $request->input('message.msg_id') ?? $request->input('msg_id');
+        if ($msgId) {
+            $m = Message::with('conversation')
+                ->where('platform', 'zalo')
+                ->where(function ($q) use ($msgId) {
+                    $q->where('message_id', $msgId)->orWhere('provider_msg_id', $msgId);
+                })
+                ->first();
+            $uid = $m?->conversation?->external_id;
+            if ($uid && $uid !== $oaId) return (string)$uid;
+        }
+
+        return null;
+    }
+
     private function storeMessage(Conversation $conversation, string $senderType, string $msgType, ?string $msgText)
     {
         $conversation->messages()->create([
