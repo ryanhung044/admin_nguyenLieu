@@ -338,34 +338,50 @@ class ConversationController extends Controller
     }
 
     private function sendMessageToUser($userId, string $message)
-    {
-        $accessToken = env('ZALO_OA_ACCESS_TOKEN'); // lưu trong .env
-        $url = "https://openapi.zalo.me/v3.0/oa/message/cs";
+{
+    $accessToken = env('ZALO_OA_ACCESS_TOKEN'); // lưu trong .env
+    $url = "https://openapi.zalo.me/v3.0/oa/message/cs";
 
-        $payload = [
-            "recipient" => [
-                "user_id" => $userId
+    $payload = [
+        "recipient" => [
+            "user_id" => $userId
+        ],
+        "message" => [
+            "text" => $message
+        ]
+    ];
+
+    $client = new \GuzzleHttp\Client();
+    try {
+        $response = $client->post($url, [
+            'headers' => [
+                'Content-Type'  => 'application/json',
+                'access_token'  => $accessToken,
             ],
-            "message" => [
-                "text" => $message
-            ]
-        ];
+            'json' => $payload,
+        ]);
 
-        $client = new \GuzzleHttp\Client();
-        try {
-            $response = $client->post($url, [
-                'headers' => [
-                    'Content-Type'  => 'application/json',
-                    'access_token'  => $accessToken,
-                ],
-                'json' => $payload,
-            ]);
+        $body = json_decode($response->getBody(), true);
 
-            return json_decode($response->getBody(), true);
-        } catch (\Exception $e) {
-            return false;
-        }
+        // Ghi log để theo dõi
+        Log::info('Zalo API Response', [
+            'user_id' => $userId,
+            'payload' => $payload,
+            'response' => $body,
+        ]);
+
+        return $body;
+    } catch (\Exception $e) {
+        Log::error('Zalo API Error', [
+            'user_id' => $userId,
+            'payload' => $payload,
+            'error' => $e->getMessage(),
+        ]);
+        return false;
     }
+}
+
+
 
 
 
