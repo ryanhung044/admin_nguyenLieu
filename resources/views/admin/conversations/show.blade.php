@@ -10,8 +10,10 @@
                     {{ ucfirst($conversation->platform) }}
                 </span>
             </p>
-            <p><strong>External ID:</strong> {{ $conversation->external_id }}</p>
-            <p><strong>Tin nhắn cuối:</strong> {{ $conversation->last_message }}</p>
+            <img src="{{ $conversation->customer->avatar_url ?? asset('images/default-avatar.png') }}" alt="avatar"
+                class="rounded-circle" width="50" height="50">
+            <h4>Khách hàng: {{ $conversation?->user?->name }}</h4>
+            <h5>Email: {{ $conversation?->user?->email }}</h5>
             <p><strong>Thời gian:</strong>
                 {{ $conversation->last_time ? \Carbon\Carbon::parse($conversation->last_time)->format('d/m/Y H:i') : '' }}
             </p>

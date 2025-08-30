@@ -282,29 +282,6 @@ class ConversationController extends Controller
         return response()->json(['status' => 'ok']);
     }
 
-    private function updateZaloUserProfile(Conversation $conversation, string $externalId): void
-    {
-        try {
-            $token = config('services.zalo.access_token'); // lưu trong .env
-            $resp = Http::withToken($token)
-                ->get('https://openapi.zalo.me/v2.0/oa/getprofile', [
-                    'data' => json_encode(['user_id' => $externalId]),
-                ]);
-
-            if ($resp->successful() && isset($resp['data'])) {
-                $data = $resp['data'];
-                $conversation->update([
-                    'user_name' => $data['display_name'] ?? null,
-                    'avatar'    => $data['avatar'] ?? null,
-                ]);
-            } else {
-                Log::warning("Không lấy được profile user $externalId", $resp->json());
-            }
-        } catch (\Throwable $e) {
-            Log::error("Lỗi lấy profile Zalo user $externalId: " . $e->getMessage());
-        }
-    }
-
     private function resolveExternalUserId(Request $request, string $event): ?string
     {
         $oaId = (string)config('services.zalo.oa_id'); // đặt ENV nếu có: ZALO_OA_ID=7380...
@@ -401,23 +378,43 @@ class ConversationController extends Controller
 
     public function index()
     {
-        $conversations = Conversation::orderByDesc('last_time')->paginate(10);
-
+        $conversations = Conversation::with('user') // load kèm thông tin khách hàng
+            ->orderByDesc('last_time')
+            ->paginate(10);
+        $conversations->getCollection()->transform(function ($conversation) {
+            if ($conversation->customer && $conversation->customer->avatar) {
+                $avatar = $conversation->customer->avatar;
+                // nếu avatar bắt đầu bằng https thì giữ nguyên, còn không thì thêm storage path
+                $conversation->customer->avatar_url = str_starts_with($avatar, 'http')
+                    ? $avatar
+                    : asset('storage/' . $avatar);
+            }
+            return $conversation;
+        });
         return view('admin.conversations.index', compact('conversations'));
     }
+
 
     /**
      * Xem chi tiết hội thoại
      */
     public function show($id)
     {
-        $conversation = Conversation::findOrFail($id);
+        $conversation = Conversation::with('user')->findOrFail($id);
+        if ($conversation->customer && $conversation->customer->avatar) {
+            $avatar = $conversation->customer->avatar;
+            $conversation->customer->avatar_url = str_starts_with($avatar, 'http')
+                ? $avatar
+                : asset('storage/' . $avatar);
+        }
         $messages = Message::where('conversation_id', $conversation->id)
+            ->with('user') // nếu muốn lấy cả thông tin người gửi
             ->orderBy('created_at', 'asc')
             ->get();
 
         return view('admin.conversations.show', compact('conversation', 'messages'));
     }
+
 
     public function sendMessage(Request $request, $id)
     {
