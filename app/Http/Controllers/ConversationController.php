@@ -444,7 +444,6 @@ class ConversationController extends Controller
                     ]);
 
                 $data = $resp->json();
-                Log::info('Zalo getAccessToken response', $data);
 
                 // Một số biến thể API trả access_token ở data['access_token'] hoặc data['data']['access_token']:
                 if (!empty($data['access_token'])) {
@@ -491,9 +490,6 @@ class ConversationController extends Controller
             ]);
 
             $body = json_decode($response->getBody()->getContents(), true);
-            Log::info('Zalo sendMessage response', $body); // log vào storage/logs/laravel.log
-            dd($body);
-
             return $body;
         } catch (\Exception $e) {
             Log::error("Send message error: " . $e->getMessage());
