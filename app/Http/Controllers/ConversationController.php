@@ -131,6 +131,9 @@ class ConversationController extends Controller
             ['user_id' => $externalId, 'last_message' => '', 'last_time' => now()]
         );
 
+        // if (empty($conversation->user_name) || empty($conversation->avatar)) {
+        //     $this->updateZaloUserProfile($conversation, $externalId);
+        // }
         switch ($event) {
             /** ----------------
              *  USER SEND EVENTS
@@ -250,6 +253,29 @@ class ConversationController extends Controller
         return response()->json(['status' => 'ok']);
     }
 
+    private function updateZaloUserProfile(Conversation $conversation, string $externalId): void
+    {
+        try {
+            $token = config('services.zalo.access_token'); // lưu trong .env
+            $resp = Http::withToken($token)
+                ->get('https://openapi.zalo.me/v2.0/oa/getprofile', [
+                    'data' => json_encode(['user_id' => $externalId]),
+                ]);
+
+            if ($resp->successful() && isset($resp['data'])) {
+                $data = $resp['data'];
+                $conversation->update([
+                    'user_name' => $data['display_name'] ?? null,
+                    'avatar'    => $data['avatar'] ?? null,
+                ]);
+            } else {
+                Log::warning("Không lấy được profile user $externalId", $resp->json());
+            }
+        } catch (\Throwable $e) {
+            Log::error("Lỗi lấy profile Zalo user $externalId: " . $e->getMessage());
+        }
+    }
+
     private function resolveExternalUserId(Request $request, string $event): ?string
     {
         $oaId = (string)config('services.zalo.oa_id'); // đặt ENV nếu có: ZALO_OA_ID=7380...
@@ -291,6 +317,7 @@ class ConversationController extends Controller
         return null;
     }
 
+    
     private function storeMessage(Conversation $conversation, string $senderType, string $msgType, ?string $msgText)
     {
         $conversation->messages()->create([
@@ -304,7 +331,42 @@ class ConversationController extends Controller
             'last_message' => $msgText,
             'last_time'    => now(),
         ]);
+
+        if ($senderType === 'admin') {
+            $this->sendMessageToUser($conversation->user_id, $msgText);
+        }
     }
+
+    private function sendMessageToUser($userId, string $message)
+    {
+        $accessToken = env('ZALO_OA_ACCESS_TOKEN'); // lưu trong .env
+        $url = "https://openapi.zalo.me/v3.0/oa/message/cs";
+
+        $payload = [
+            "recipient" => [
+                "user_id" => $userId
+            ],
+            "message" => [
+                "text" => $message
+            ]
+        ];
+
+        $client = new \GuzzleHttp\Client();
+        try {
+            $response = $client->post($url, [
+                'headers' => [
+                    'Content-Type'  => 'application/json',
+                    'access_token'  => $accessToken,
+                ],
+                'json' => $payload,
+            ]);
+
+            return json_decode($response->getBody(), true);
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
 
 
 
