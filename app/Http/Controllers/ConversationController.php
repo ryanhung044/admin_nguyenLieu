@@ -116,14 +116,16 @@ class ConversationController extends Controller
         $event = $request->input('event_name');
 
         // Luôn xác định userId khách (external_id)
+        // Luôn xác định external_id = id của user khách
         $userId = $request->input('sender.id')
             ?? $request->input('from.id')
             ?? $request->input('user_id_by_app');
 
-        // Nếu không có userId (tức là event từ OA/admin), 
-        // thì lấy từ conversation hiện tại (truy ngược theo message_id nếu có)
+        // Nếu không có userId (trường hợp OA gửi)
+        // thì tìm conversation cũ theo message_id hoặc lấy từ payload
         if (!$userId) {
             $msgId = $request->input('message.msg_id');
+
             if ($msgId) {
                 $conv = Message::where('platform', 'zalo')
                     ->where('message_id', $msgId)
@@ -132,9 +134,30 @@ class ConversationController extends Controller
             }
         }
 
-        // Nếu vẫn không có userId thì bỏ qua
+        // Nếu vẫn không có userId → bỏ qua (KHÔNG tạo conversation mới)
         if (!$userId) {
             Log::warning("Webhook missing userId", $request->all());
+            return response()->json(['status' => 'ignored']);
+        }
+
+        $externalId = $userId;
+
+        // Chỉ tạo conversation nếu đây là lần ĐẦU user nhắn tới OA
+        $conversation = Conversation::where('platform', 'zalo')
+            ->where('external_id', $externalId)
+            ->first();
+
+        if (!$conversation && str_starts_with($event, 'user_send_')) {
+            $conversation = Conversation::create([
+                'platform'     => 'zalo',
+                'external_id'  => $externalId,
+                'user_id'      => $externalId,
+                'last_message' => '',
+                'last_time'    => now(),
+            ]);
+        } elseif (!$conversation) {
+            // OA gửi mà chưa từng có conversation thì bỏ qua
+            Log::warning("OA event without conversation", $request->all());
             return response()->json(['status' => 'ignored']);
         }
 
