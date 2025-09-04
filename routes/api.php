@@ -9,6 +9,7 @@ use App\Http\Controllers\ConversationController;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -85,6 +86,8 @@ Route::post('/webhook/zalo', [ConversationController::class, 'zalo']);
 Route::post('/webhook/facebook', [ConversationController::class, 'facebook']);
 Route::get('/webhook/zalo', [ConversationController::class, 'zaloCallback']);
 Route::get('/webhook/facebook', function (Request $request) {
+    Log::info('Facebook Webhook', $request->all());
+
     $verifyToken = 'my_fb_wdfasdfasdfasdfebhook_secretdafsdfasasdfasdfasdfasdfsdffsdfuyjsfgt456gdfsg34';
 
     if ($request->get('hub_verify_token') === $verifyToken) {
