@@ -541,32 +541,46 @@ class ConversationController extends Controller
 
 
     // Facebook webhook
-    public function facebook(Request $request)
+    public function facebookCallback(Request $request)
     {
+        $verifyToken = 'my_fb_wdfasdfasdfasdfebhook_secretdafsdfasasdfasdfasdfasdfsdffsdfuyjsfgt456gdfsg34';
+
+        // 🔹 Bước 1: Verify khi cấu hình webhook trên Meta
+        if ($request->isMethod('get')) {
+            if ($request->get('hub_verify_token') === $verifyToken) {
+                return response($request->get('hub_challenge'), 200);
+            }
+            return response('Error, wrong validation token', 403);
+        }
+
+        // 🔹 Bước 2: Nhận event từ FB (POST)
         Log::info('Facebook Webhook', $request->all());
 
         if ($request->object === 'page') {
             foreach ($request->entry as $entry) {
-                foreach ($entry['messaging'] as $msg) {
+                foreach ($entry['messaging'] ?? [] as $msg) {
                     if (isset($msg['message']['text'])) {
                         $senderId = $msg['sender']['id'];
-                        $text = $msg['message']['text'];
+                        $text     = $msg['message']['text'];
 
+                        // Tạo hoặc tìm hội thoại
                         $conversation = Conversation::firstOrCreate(
                             ['platform' => 'facebook', 'external_id' => $senderId],
                             ['last_message' => '', 'last_time' => now()]
                         );
 
+                        // Lưu message
                         $conversation->messages()->create([
-                            'sender_type' => 'user',
+                            'sender_type'  => 'user',
                             'message_type' => 'text',
                             'message_text' => $text,
-                            'sent_at' => now(),
+                            'sent_at'      => now(),
                         ]);
 
+                        // Cập nhật hội thoại
                         $conversation->update([
                             'last_message' => $text,
-                            'last_time' => now(),
+                            'last_time'    => now(),
                         ]);
                     }
                 }
@@ -575,6 +589,7 @@ class ConversationController extends Controller
 
         return response()->json(['status' => 'ok']);
     }
+
 
     public function index()
     {
