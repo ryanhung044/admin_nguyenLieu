@@ -12,7 +12,7 @@
                     <th>#</th>
                     <th>Nền tảng</th>
                     <th>Người dùng</th>
-                    <th>Hình ảnh</th>
+                    {{-- <th>Hình ảnh</th> --}}
                     <th>Tin nhắn cuối</th>
                     <th>Thời gian cuối</th>
                     <th>Hành động</th>
@@ -23,11 +23,11 @@
                     <tr>
                         <td>{{ $conversations->firstItem() + $index }}</td>
                         <td>{{ $conv->platform }}</td>
-                        <td>{{ $conversation->user->full_name ?? 'Ẩn danh' }}</td>
+                        {{-- <td>{{ $conv->user->full_name ?? 'Ẩn danh' }}</td> --}}
                         <td>
-                            <img src="{{ $conversation->user->avatar ?? asset('images/default-avatar.png') }}"
-                                alt="avatar" class="rounded-circle" width="40" height="40">
-                        {{ $conversation->user->name ?? 'Khách hàng' }}
+                            <img src="{{ $conv->user->avatar ?? asset('images/default-avatar.png') }}" alt="avatar"
+                                class="rounded-circle" width="40" height="40">
+                            {{ $conv->user->name ?? 'Khách hàng' }}
                         </td>
                         <td>{{ $conv->last_message }}</td>
                         <td>

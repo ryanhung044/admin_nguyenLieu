@@ -10,10 +10,10 @@
                     {{ ucfirst($conversation->platform) }}
                 </span>
             </p>
-            <img src="{{ $conversation->customer->avatar_url ?? asset('images/default-avatar.png') }}" alt="avatar"
-                class="rounded-circle" width="50" height="50">
-            <h4>Khách hàng: {{ $conversation?->user?->name }}</h4>
-            <h5>Email: {{ $conversation?->user?->email }}</h5>
+
+            <h4><img src="{{ $conversation->user->avatar ?? asset('images/default-avatar.png') }}" alt="avatar"
+                    class="rounded-circle" width="50" height="50"> {{ $conversation?->user?->name }}</h4>
+            {{-- <h5>Email: {{ $conversation?->user?->email }}</h5> --}}
             <p><strong>Thời gian:</strong>
                 {{ $conversation->last_time ? \Carbon\Carbon::parse($conversation->last_time)->format('d/m/Y H:i') : '' }}
             </p>
@@ -27,9 +27,9 @@
         <div class="col-md-8">
             <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">Hội thoại với {{ $conversation->external_id }}</h5>
+                    <h5 class="mb-0">Hội thoại với {{ $conversation?->user?->full_name }}</h5>
                 </div>
-                <div class="card-body" style="height: 500px; overflow-y: auto; background: #f9f9f9;">
+                <div id="chat-box" class="card-body" style="height: 500px; overflow-y: auto; background: #f9f9f9;">
                     @foreach ($messages as $msg)
                         <div
                             class="d-flex mb-3 
@@ -77,4 +77,13 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            let chatBox = document.getElementById("chat-box");
+            if (chatBox) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        });
+    </script>
 @endsection
