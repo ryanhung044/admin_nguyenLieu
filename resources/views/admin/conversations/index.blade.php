@@ -3,7 +3,7 @@
 @section('title', 'Danh sách hội thoại')
 
 @section('content')
-    <div class="container">
+    <div>
         <h1 class="mb-4">Danh sách hội thoại</h1>
 
         <table class="table table-bordered table-striped">
