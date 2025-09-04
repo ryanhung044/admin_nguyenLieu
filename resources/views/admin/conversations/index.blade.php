@@ -23,11 +23,11 @@
                     <tr>
                         <td>{{ $conversations->firstItem() + $index }}</td>
                         <td>{{ $conv->platform }}</td>
-                        <td>{{ $conversation->user->name ?? 'Ẩn danh' }}</td>
+                        <td>{{ $conversation->user->full_name ?? 'Ẩn danh' }}</td>
                         <td>
-                            <img src="{{ $conversation->customer->avatar_url ?? asset('images/default-avatar.png') }}"
+                            <img src="{{ $conversation->user->avatar ?? asset('images/default-avatar.png') }}"
                                 alt="avatar" class="rounded-circle" width="40" height="40">
-                            {{ $conversation->customer->name ?? 'Khách hàng' }}
+                        {{ $conversation->user->name ?? 'Khách hàng' }}
                         </td>
                         <td>{{ $conv->last_message }}</td>
                         <td>
@@ -48,7 +48,7 @@
         </table>
 
         <div>
-            {{ $conversations->links() }}
+            {{ $conversations->links('pagination::bootstrap-5') }}
         </div>
     </div>
 @endsection
