@@ -331,9 +331,15 @@ class ConversationController extends Controller
             $data = $response->json();
             // Log::info("Zalo v3 getprofile decoded: ", $data ?? []);
 
-
-            $name   = $data['data']['display_name'] ?? 'Zalo User';
-            $avatar = $data['data']['avatar'] ?? null;
+            if (($data['error'] ?? 1) === 0 && isset($data['data'])) {
+                $profile = $data['data'];
+                $name   = $profile['display_name'] ?? 'Zalo User';
+                $avatar = $profile['avatar'] ?? null;
+            } else {
+                Log::warning('Zalo getprofile failed: ' . json_encode($data));
+                $name   = 'Zalo User';
+                $avatar = null;
+            }
 
             // 🔹 Tạo mới user
             $user = User::updateOrCreate(
