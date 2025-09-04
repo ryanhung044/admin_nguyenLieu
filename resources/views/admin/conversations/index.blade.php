@@ -29,7 +29,7 @@
                                 class="rounded-circle" width="40" height="40">
                             {{ $conv->user->name ?? 'Khách hàng' }}
                         </td>
-                        <td>{{ $conv->last_message }}</td>
+                        <td>{{ \Illuminate\Support\Str::limit($conv->last_message, 50) }}</td>
                         <td>
                             {{ $conv->last_time ? \Carbon\Carbon::parse($conv->last_time)->format('d/m/Y H:i') : '' }}
                         </td>
