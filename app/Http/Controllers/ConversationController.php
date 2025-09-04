@@ -336,7 +336,7 @@ class ConversationController extends Controller
             $avatar = $data['data']['avatar'] ?? null;
 
             // 🔹 Tạo mới user
-            $user = User::firstOrCreate(
+            $user = User::updateOrCreate(
                 ['zalo_id' => $externalId], // tránh duplicate
                 [
                     'name'      => $name,
