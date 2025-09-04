@@ -83,3 +83,4 @@ Route::post('/cart/refresh', [ClientController::class, 'refreshCart'])->name('re
 Route::post('/order/update-status-payment', [ClientController::class, 'updateStatusPayment'])->name('updateStatusPayment');
 Route::post('/webhook/zalo', [ConversationController::class, 'zalo']);
 Route::post('/webhook/facebook', [ConversationController::class, 'facebook']);
+Route::get('/webhook/zalo', [ConversationController::class, 'zaloCallback']);

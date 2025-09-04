@@ -7,6 +7,7 @@ use App\Http\Requests\StoreConversationRequest;
 use App\Http\Requests\UpdateConversationRequest;
 use App\Models\Message;
 use App\Models\User;
+use App\Models\ZaloToken;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -445,47 +446,92 @@ class ConversationController extends Controller
             ->with('success', 'Tin nhắn đã được gửi thành công.');
     }
 
+    public function zaloCallback(Request $request)
+    {
+        $code = $request->input('code');
+        if (!$code) {
+            return response()->json(['error' => 'Missing code']);
+        }
+
+        $resp = Http::asForm()
+            ->withHeaders([
+                'secret_key'   => env('ZALO_SECRET_KEY'),
+                'Content-Type' => 'application/x-www-form-urlencoded',
+            ])
+            ->post('https://oauth.zaloapp.com/v4/oa/access_token', [
+                'app_id'     => env('ZALO_APP_ID'),
+                'code'       => $code,
+                'grant_type' => 'authorization_code',
+            ]);
+
+        $data = $resp->json();
+
+        if (!empty($data['access_token'])) {
+            ZaloToken::create([
+                'access_token'  => $data['access_token'],
+                'refresh_token' => $data['refresh_token'],
+                'expired_at'    => now()->addSeconds($data['expires_in']),
+            ]);
+        }
+
+        return response()->json($data);
+    }
+
 
     private function getZaloAccessToken(): ?string
     {
-        // Cache token để không gọi API liên tục (expires_in ~3600s)
-        return Cache::remember('zalo_oa_access_token', 3500, function () {
-            $appId        = env('ZALO_APP_ID');
-            $appSecret    = env('ZALO_SECRET_KEY');        // secret_key của app/OA
-            $refreshToken = env('ZALO_OA_REFRESH_TOKEN'); // refresh token bạn lưu
+        // Lấy token mới nhất trong DB
+        $token = ZaloToken::latest()->first();
 
-            $url = "https://oauth.zaloapp.com/v4/oa/access_token";
+        // Nếu token còn hạn dùng thì xài luôn
+        if ($token && $token->expired_at && now()->lt($token->expired_at)) {
+            return $token->access_token;
+        }
 
-            try {
-                // Gọi theo form x-www-form-urlencoded, và ĐẶT header secret_key
-                $resp = Http::asForm()
-                    ->withHeaders([
-                        'secret_key'   => $appSecret,
-                        'Content-Type' => 'application/x-www-form-urlencoded',
-                    ])->post($url, [
-                        'app_id'        => $appId,
-                        'refresh_token' => $refreshToken,
-                        'grant_type'    => 'refresh_token',
-                    ]);
+        $appId     = env('ZALO_APP_ID');
+        $appSecret = env('ZALO_SECRET_KEY');
+        $refreshToken = $token?->refresh_token ?? env('ZALO_OA_REFRESH_TOKEN');
 
-                $data = $resp->json();
+        if (empty($refreshToken)) {
+            Log::error('Missing Zalo OA refresh_token. Please set it from Dashboard.');
+            return null;
+        }
 
-                // Một số biến thể API trả access_token ở data['access_token'] hoặc data['data']['access_token']:
-                if (!empty($data['access_token'])) {
-                    return $data['access_token'];
-                }
-                if (!empty($data['data']['access_token'])) {
-                    return $data['data']['access_token'];
-                }
+        $url = "https://oauth.zaloapp.com/v4/oa/access_token";
 
-                // Nếu không có token, log rõ để debug
-                Log::error('Zalo getAccessToken failed', $data);
-                return null;
-            } catch (\Throwable $e) {
-                Log::error('Zalo getAccessToken exception: ' . $e->getMessage());
-                return null;
+        try {
+            $resp = Http::asForm()
+                ->withHeaders([
+                    'secret_key'   => $appSecret,
+                    'Content-Type' => 'application/x-www-form-urlencoded',
+                ])->post($url, [
+                    'app_id'        => $appId,
+                    'refresh_token' => $refreshToken,
+                    'grant_type'    => 'refresh_token',
+                ]);
+
+            $data = $resp->json();
+
+            if (!empty($data['access_token'])) {
+                // Lưu DB token mới
+                ZaloToken::updateOrCreate(
+                    ['id' => $token?->id ?? 1],
+                    [
+                        'access_token'  => $data['access_token'],
+                        'refresh_token' => $data['refresh_token'] ?? $refreshToken,
+                        'expired_at'    => now()->addSeconds($data['expires_in'] ?? 3600),
+                    ]
+                );
+
+                return $data['access_token'];
             }
-        });
+
+            Log::error('Zalo getAccessToken failed', $data);
+            return null;
+        } catch (\Throwable $e) {
+            Log::error('Zalo getAccessToken exception: ' . $e->getMessage());
+            return null;
+        }
     }
 
 
