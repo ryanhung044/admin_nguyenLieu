@@ -325,11 +325,11 @@ class ConversationController extends Controller
             ])->get($url, $params);
 
             // Debug log
-            Log::info("Zalo v3 getprofile raw: " . $response->body());
-            Log::info("Zalo v3 getprofile status: " . $response->status());
+            // Log::info("Zalo v3 getprofile raw: " . $response->body());
+            // Log::info("Zalo v3 getprofile status: " . $response->status());
 
             $data = $response->json();
-            Log::info("Zalo v3 getprofile decoded: ", $data ?? []);
+            // Log::info("Zalo v3 getprofile decoded: ", $data ?? []);
 
 
             $name   = $data['data']['display_name'] ?? 'Zalo User';
@@ -345,6 +345,7 @@ class ConversationController extends Controller
                     'role'      => 'user',
                 ]
             );
+            Log::info('$user', $user);
         }
 
         switch ($event) {
