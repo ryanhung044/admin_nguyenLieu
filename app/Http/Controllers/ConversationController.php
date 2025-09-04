@@ -557,35 +557,57 @@ class ConversationController extends Controller
         Log::info('Facebook Webhook', $request->all());
 
         if ($request->object === 'page') {
+            Log::info('🔹 Nhận object = page');
+
             foreach ($request->entry as $entry) {
+                Log::info('📥 Entry:', $entry);
+
                 foreach ($entry['messaging'] ?? [] as $msg) {
+                    Log::info('💬 Tin nhắn:', $msg);
+
                     if (isset($msg['message']['text'])) {
-                        $senderId = $msg['sender']['id'];
-                        $text     = $msg['message']['text'];
+                        $senderId = $msg['sender']['id'] ?? null;
+                        $text     = $msg['message']['text'] ?? '';
 
-                        // Tạo hoặc tìm hội thoại
-                        $conversation = Conversation::firstOrCreate(
-                            ['platform' => 'facebook', 'external_id' => $senderId],
-                            ['last_message' => '', 'last_time' => now()]
-                        );
+                        Log::info("👤 SenderID: {$senderId}, 📄 Text: {$text}");
 
-                        // Lưu message
-                        $conversation->messages()->create([
-                            'sender_type'  => 'user',
-                            'message_type' => 'text',
-                            'message_text' => $text,
-                            'sent_at'      => now(),
-                        ]);
+                        try {
+                            // Tạo hoặc tìm hội thoại
+                            $conversation = Conversation::firstOrCreate(
+                                ['platform' => 'facebook', 'external_id' => $senderId],
+                                ['last_message' => '', 'last_time' => now()]
+                            );
+                            Log::info("✅ Tìm/Tạo hội thoại ID: {$conversation->id}");
 
-                        // Cập nhật hội thoại
-                        $conversation->update([
-                            'last_message' => $text,
-                            'last_time'    => now(),
-                        ]);
+                            // Lưu message
+                            $conversation->messages()->create([
+                                'sender_type'  => 'user',
+                                'message_type' => 'text',
+                                'message_text' => $text,
+                                'sent_at'      => now(),
+                            ]);
+                            Log::info("💾 Lưu message thành công cho conversation {$conversation->id}");
+
+                            // Cập nhật hội thoại
+                            $conversation->update([
+                                'last_message' => $text,
+                                'last_time'    => now(),
+                            ]);
+                            Log::info("🔄 Cập nhật hội thoại {$conversation->id} với last_message={$text}");
+                        } catch (\Exception $e) {
+                            Log::error("❌ Lỗi khi xử lý message: " . $e->getMessage(), [
+                                'trace' => $e->getTraceAsString()
+                            ]);
+                        }
+                    } else {
+                        Log::info("⚠️ Không có message.text trong msg", $msg);
                     }
                 }
             }
+        } else {
+            Log::warning('⚠️ Object không phải page:', $request->all());
         }
+
 
         return response()->json(['status' => 'ok']);
     }
