@@ -112,177 +112,359 @@ class ConversationController extends Controller
     //     return response()->json(['status' => 'ok']);
     // }
 
+    // public function zalo(Request $request)
+    // {
+    //     Log::info('Zalo Webhook', $request->all());
+
+    //     $event = (string)$request->input('event_name');
+
+    //     // 1) Resolve external_id: luôn là ID của USER (không bao giờ là OA)
+    //     $externalId = $this->resolveExternalUserId($request, $event);
+
+    //     // Nếu chưa resolve được, bỏ qua để tránh tạo Conversation sai
+    //     if (!$externalId) {
+    //         Log::warning("Webhook cannot resolve external user id", $request->all());
+    //         return response()->json(['status' => 'ignored']);
+    //     }
+
+    //     // 2) Dùng (platform, external_id) làm khóa duy nhất cho 1 cuộc chat
+    //     //    -> Không bao giờ tạo conversation mới khi external_id trùng
+    //     $conversation = Conversation::firstOrCreate(
+    //         ['platform' => 'zalo', 'external_id' => $externalId],
+    //         ['user_id' => $externalId, 'last_message' => '', 'last_time' => now()]
+    //     );
+
+    //     // 2) Kiểm tra trong DB đã có user với zalo_id này chưa
+    //     $user = User::where('zalo_id', $externalId)->first();
+
+    //     if (!$user) {
+    //         // 🔹 Lấy access_token
+    //         $accessToken = $this->getZaloAccessToken();
+
+    //         // 🔹 API v3: lấy thông tin user
+    //         $url = "https://openapi.zalo.me/v3.0/oa/user/getprofile";
+    //         $response = Http::withHeaders([
+    //             'Authorization' => "Bearer {$accessToken}",
+    //         ])->post($url, [
+    //             'user_id' => $externalId,
+    //         ]);
+
+    //         $data = $response->json();
+    //         Log::info("Zalo v3 getprofile response", $data);
+
+    //         $name   = $data['data']['display_name'] ?? 'Zalo User';
+    //         $avatar = $data['data']['avatar'] ?? null;
+
+    //         // 🔹 Tạo mới user
+    //         $user = User::create([
+    //             'name'      => $name,
+    //             'full_name' => $name,
+    //             'avatar'    => $avatar,
+    //             'zalo_id'   => $externalId,
+    //             'role'      => 'user',
+    //         ]);
+    //     }
+
+    //     switch ($event) {
+    //         /** ----------------
+    //          *  USER SEND EVENTS
+    //          * ---------------- */
+    //         case 'user_send_text':
+    //             $text = $request->input('message.text');
+    //             $this->storeMessage($conversation, 'user', 'text', $text);
+    //             break;
+
+    //         case 'user_send_image':
+    //             foreach ($request->input('message.attachments', []) as $img) {
+    //                 $this->storeMessage($conversation, 'user', 'image', $img['payload']['url'] ?? '[Ảnh]');
+    //             }
+    //             break;
+
+    //         case 'user_send_sticker':
+    //             $sticker = $request->input('message.sticker_id');
+    //             $this->storeMessage($conversation, 'user', 'sticker', "[Sticker:$sticker]");
+    //             break;
+
+    //         case 'user_send_gif':
+    //             $this->storeMessage($conversation, 'user', 'gif', '[GIF]');
+    //             break;
+
+    //         case 'user_send_link':
+    //             $link = $request->input('message.link');
+    //             $this->storeMessage($conversation, 'user', 'link', $link);
+    //             break;
+
+    //         case 'user_send_location':
+    //             $loc = $request->input('message.location.address');
+    //             $this->storeMessage($conversation, 'user', 'location', $loc);
+    //             break;
+
+    //         /** ----------------
+    //              *  USER ACTION EVENTS
+    //              * ---------------- */
+    //         case 'follow':
+    //             $this->storeMessage($conversation, 'system', 'event', 'Người dùng đã quan tâm OA');
+    //             break;
+
+    //         case 'unfollow':
+    //             $this->storeMessage($conversation, 'system', 'event', 'Người dùng bỏ quan tâm OA');
+    //             break;
+
+    //         case 'user_click_menu':
+    //             $menuId = $request->input('menu.id');
+    //             $this->storeMessage($conversation, 'user', 'event', "User click menu: $menuId");
+    //             break;
+
+    //         case 'reopen_chat':
+    //             $this->storeMessage($conversation, 'system', 'event', "User chat lại sau một thời gian không hoạt động");
+    //             break;
+
+    //         /** ----------------
+    //              *  OA SEND EVENTS
+    //              * ---------------- */
+    //         case 'oa_send_msg_result':
+    //             $status = $request->input('status');
+    //             $this->storeMessage($conversation, 'system', 'oa_send_status', "KQ gửi OA: $status");
+    //             break;
+    //         case 'oa_send_text':
+    //             $text = $request->input('message.text');
+    //             $conversation->messages()->create([
+    //                 'sender_type' => 'admin',
+    //                 'message_type' => 'text',
+    //                 'message_text' => $text,
+    //                 'sent_at'     => now(),
+    //             ]);
+
+    //             $conversation->update([
+    //                 'last_message' => $text,
+    //                 'last_time'    => now(),
+    //             ]);
+    //             break;
+    //         case 'user_received_message':
+    //             $msgId = $request->input('message.msg_id');
+    //             $conversation->messages()->create([
+    //                 'sender_type'  => 'system',
+    //                 'message_type' => 'event',
+    //                 'message_text' => "User đã nhận tin nhắn ID: $msgId",
+    //                 'sent_at'      => now(),
+    //             ]);
+
+    //             $conversation->update([
+    //                 'last_message' => '[User đã nhận tin]',
+    //                 'last_time'    => now(),
+    //             ]);
+    //             break;
+
+
+    //         case 'broadcast_result':
+    //             $brId = $request->input('broadcast_id');
+    //             $this->storeMessage($conversation, 'system', 'broadcast', "Kết quả broadcast: $brId");
+    //             break;
+
+    //         /** ----------------
+    //              *  DELIVERY STATUS
+    //              * ---------------- */
+    //         case 'delivery':
+    //             $this->storeMessage($conversation, 'system', 'event', 'Tin nhắn đã giao tới user');
+    //             break;
+
+    //         case 'seen':
+    //             $this->storeMessage($conversation, 'system', 'event', 'Người dùng đã đọc tin nhắn');
+    //             break;
+
+    //         /** ----------------
+    //              *  DEFAULT
+    //              * ---------------- */
+    //         default:
+    //             Log::warning("Unhandled Zalo event: $event", $request->all());
+    //             $this->storeMessage($conversation, 'system', 'event', "Sự kiện khác: $event");
+    //             break;
+    //     }
+
+    //     return response()->json(['status' => 'ok']);
+    // }
     public function zalo(Request $request)
-    {
-        Log::info('Zalo Webhook', $request->all());
+{
+    // ✅ Luôn ép kiểu array hoặc log bằng JSON để tránh lỗi context null
+    Log::info('Zalo Webhook: ' . json_encode($request->all(), JSON_UNESCAPED_UNICODE));
 
-        $event = (string)$request->input('event_name');
+    $event = (string)$request->input('event_name');
 
-        // 1) Resolve external_id: luôn là ID của USER (không bao giờ là OA)
-        $externalId = $this->resolveExternalUserId($request, $event);
+    // 1) Resolve external_id: luôn là ID của USER (không bao giờ là OA)
+    $externalId = $this->resolveExternalUserId($request, $event);
 
-        // Nếu chưa resolve được, bỏ qua để tránh tạo Conversation sai
-        if (!$externalId) {
-            Log::warning("Webhook cannot resolve external user id", $request->all());
-            return response()->json(['status' => 'ignored']);
-        }
-
-        // 2) Dùng (platform, external_id) làm khóa duy nhất cho 1 cuộc chat
-        //    -> Không bao giờ tạo conversation mới khi external_id trùng
-        $conversation = Conversation::firstOrCreate(
-            ['platform' => 'zalo', 'external_id' => $externalId],
-            ['user_id' => $externalId, 'last_message' => '', 'last_time' => now()]
+    // Nếu chưa resolve được, bỏ qua để tránh tạo Conversation sai
+    if (!$externalId) {
+        Log::warning(
+            "Webhook cannot resolve external user id: " . json_encode($request->all(), JSON_UNESCAPED_UNICODE)
         );
-
-        // 2) Kiểm tra trong DB đã có user với zalo_id này chưa
-        $user = User::where('zalo_id', $externalId)->first();
-
-        if (!$user) {
-            // 🔹 Lấy access_token
-            $accessToken = $this->getZaloAccessToken();
-
-            // 🔹 API v3: lấy thông tin user
-            $url = "https://openapi.zalo.me/v3.0/oa/user/getprofile";
-            $response = Http::withHeaders([
-                'Authorization' => "Bearer {$accessToken}",
-            ])->post($url, [
-                'user_id' => $externalId,
-            ]);
-
-            $data = $response->json();
-            Log::info("Zalo v3 getprofile response", $data);
-
-            $name   = $data['data']['display_name'] ?? 'Zalo User';
-            $avatar = $data['data']['avatar'] ?? null;
-
-            // 🔹 Tạo mới user
-            $user = User::create([
-                'name'      => $name,
-                'full_name' => $name,
-                'avatar'    => $avatar,
-                'zalo_id'   => $externalId,
-                'role'      => 'user',
-            ]);
-        }
-
-        switch ($event) {
-            /** ----------------
-             *  USER SEND EVENTS
-             * ---------------- */
-            case 'user_send_text':
-                $text = $request->input('message.text');
-                $this->storeMessage($conversation, 'user', 'text', $text);
-                break;
-
-            case 'user_send_image':
-                foreach ($request->input('message.attachments', []) as $img) {
-                    $this->storeMessage($conversation, 'user', 'image', $img['payload']['url'] ?? '[Ảnh]');
-                }
-                break;
-
-            case 'user_send_sticker':
-                $sticker = $request->input('message.sticker_id');
-                $this->storeMessage($conversation, 'user', 'sticker', "[Sticker:$sticker]");
-                break;
-
-            case 'user_send_gif':
-                $this->storeMessage($conversation, 'user', 'gif', '[GIF]');
-                break;
-
-            case 'user_send_link':
-                $link = $request->input('message.link');
-                $this->storeMessage($conversation, 'user', 'link', $link);
-                break;
-
-            case 'user_send_location':
-                $loc = $request->input('message.location.address');
-                $this->storeMessage($conversation, 'user', 'location', $loc);
-                break;
-
-            /** ----------------
-                 *  USER ACTION EVENTS
-                 * ---------------- */
-            case 'follow':
-                $this->storeMessage($conversation, 'system', 'event', 'Người dùng đã quan tâm OA');
-                break;
-
-            case 'unfollow':
-                $this->storeMessage($conversation, 'system', 'event', 'Người dùng bỏ quan tâm OA');
-                break;
-
-            case 'user_click_menu':
-                $menuId = $request->input('menu.id');
-                $this->storeMessage($conversation, 'user', 'event', "User click menu: $menuId");
-                break;
-
-            case 'reopen_chat':
-                $this->storeMessage($conversation, 'system', 'event', "User chat lại sau một thời gian không hoạt động");
-                break;
-
-            /** ----------------
-                 *  OA SEND EVENTS
-                 * ---------------- */
-            case 'oa_send_msg_result':
-                $status = $request->input('status');
-                $this->storeMessage($conversation, 'system', 'oa_send_status', "KQ gửi OA: $status");
-                break;
-            case 'oa_send_text':
-                $text = $request->input('message.text');
-                $conversation->messages()->create([
-                    'sender_type' => 'admin',
-                    'message_type' => 'text',
-                    'message_text' => $text,
-                    'sent_at'     => now(),
-                ]);
-
-                $conversation->update([
-                    'last_message' => $text,
-                    'last_time'    => now(),
-                ]);
-                break;
-            case 'user_received_message':
-                $msgId = $request->input('message.msg_id');
-                $conversation->messages()->create([
-                    'sender_type'  => 'system',
-                    'message_type' => 'event',
-                    'message_text' => "User đã nhận tin nhắn ID: $msgId",
-                    'sent_at'      => now(),
-                ]);
-
-                $conversation->update([
-                    'last_message' => '[User đã nhận tin]',
-                    'last_time'    => now(),
-                ]);
-                break;
-
-
-            case 'broadcast_result':
-                $brId = $request->input('broadcast_id');
-                $this->storeMessage($conversation, 'system', 'broadcast', "Kết quả broadcast: $brId");
-                break;
-
-            /** ----------------
-                 *  DELIVERY STATUS
-                 * ---------------- */
-            case 'delivery':
-                $this->storeMessage($conversation, 'system', 'event', 'Tin nhắn đã giao tới user');
-                break;
-
-            case 'seen':
-                $this->storeMessage($conversation, 'system', 'event', 'Người dùng đã đọc tin nhắn');
-                break;
-
-            /** ----------------
-                 *  DEFAULT
-                 * ---------------- */
-            default:
-                Log::warning("Unhandled Zalo event: $event", $request->all());
-                $this->storeMessage($conversation, 'system', 'event', "Sự kiện khác: $event");
-                break;
-        }
-
-        return response()->json(['status' => 'ok']);
+        return response()->json(['status' => 'ignored']);
     }
+
+    // 2) Dùng (platform, external_id) làm khóa duy nhất cho 1 cuộc chat
+    $conversation = Conversation::firstOrCreate(
+        ['platform' => 'zalo', 'external_id' => $externalId],
+        ['user_id' => $externalId, 'last_message' => '', 'last_time' => now()]
+    );
+
+    // 3) Kiểm tra trong DB đã có user với zalo_id này chưa
+    $user = User::where('zalo_id', $externalId)->first();
+
+    if (!$user) {
+        // 🔹 Lấy access_token
+        $accessToken = $this->getZaloAccessToken();
+
+        // 🔹 API v3: lấy thông tin user
+        $url = "https://openapi.zalo.me/v3.0/oa/user/getprofile";
+        $response = Http::withHeaders([
+            'Authorization' => "Bearer {$accessToken}",
+        ])->post($url, [
+            'user_id' => $externalId,
+        ]);
+
+        $data = $response->json();
+        Log::info("Zalo v3 getprofile response: " . json_encode($data, JSON_UNESCAPED_UNICODE));
+
+        $name   = $data['data']['display_name'] ?? 'Zalo User';
+        $avatar = $data['data']['avatar'] ?? null;
+
+        // 🔹 Tạo mới user
+        $user = User::create([
+            'name'      => $name,
+            'full_name' => $name,
+            'avatar'    => $avatar,
+            'zalo_id'   => $externalId,
+            'role'      => 'user',
+        ]);
+    }
+
+    switch ($event) {
+        /** ----------------
+         *  USER SEND EVENTS
+         * ---------------- */
+        case 'user_send_text':
+            $text = $request->input('message.text');
+            $this->storeMessage($conversation, 'user', 'text', $text);
+            break;
+
+        case 'user_send_image':
+            foreach ($request->input('message.attachments', []) as $img) {
+                $this->storeMessage(
+                    $conversation,
+                    'user',
+                    'image',
+                    $img['payload']['url'] ?? '[Ảnh]'
+                );
+            }
+            break;
+
+        case 'user_send_sticker':
+            $sticker = $request->input('message.sticker_id');
+            $this->storeMessage($conversation, 'user', 'sticker', "[Sticker:$sticker]");
+            break;
+
+        case 'user_send_gif':
+            $this->storeMessage($conversation, 'user', 'gif', '[GIF]');
+            break;
+
+        case 'user_send_link':
+            $link = $request->input('message.link');
+            $this->storeMessage($conversation, 'user', 'link', $link);
+            break;
+
+        case 'user_send_location':
+            $loc = $request->input('message.location.address');
+            $this->storeMessage($conversation, 'user', 'location', $loc);
+            break;
+
+        /** ----------------
+         *  USER ACTION EVENTS
+         * ---------------- */
+        case 'follow':
+            $this->storeMessage($conversation, 'system', 'event', 'Người dùng đã quan tâm OA');
+            break;
+
+        case 'unfollow':
+            $this->storeMessage($conversation, 'system', 'event', 'Người dùng bỏ quan tâm OA');
+            break;
+
+        case 'user_click_menu':
+            $menuId = $request->input('menu.id');
+            $this->storeMessage($conversation, 'user', 'event', "User click menu: $menuId");
+            break;
+
+        case 'reopen_chat':
+            $this->storeMessage($conversation, 'system', 'event', "User chat lại sau một thời gian không hoạt động");
+            break;
+
+        /** ----------------
+         *  OA SEND EVENTS
+         * ---------------- */
+        case 'oa_send_msg_result':
+            $status = $request->input('status');
+            $this->storeMessage($conversation, 'system', 'oa_send_status', "KQ gửi OA: $status");
+            break;
+
+        case 'oa_send_text':
+            $text = $request->input('message.text');
+            $conversation->messages()->create([
+                'sender_type'  => 'admin',
+                'message_type' => 'text',
+                'message_text' => $text,
+                'sent_at'      => now(),
+            ]);
+
+            $conversation->update([
+                'last_message' => $text,
+                'last_time'    => now(),
+            ]);
+            break;
+
+        case 'user_received_message':
+            $msgId = $request->input('message.msg_id');
+            $conversation->messages()->create([
+                'sender_type'  => 'system',
+                'message_type' => 'event',
+                'message_text' => "User đã nhận tin nhắn ID: $msgId",
+                'sent_at'      => now(),
+            ]);
+
+            $conversation->update([
+                'last_message' => '[User đã nhận tin]',
+                'last_time'    => now(),
+            ]);
+            break;
+
+        case 'broadcast_result':
+            $brId = $request->input('broadcast_id');
+            $this->storeMessage($conversation, 'system', 'broadcast', "Kết quả broadcast: $brId");
+            break;
+
+        /** ----------------
+         *  DELIVERY STATUS
+         * ---------------- */
+        case 'delivery':
+            $this->storeMessage($conversation, 'system', 'event', 'Tin nhắn đã giao tới user');
+            break;
+
+        case 'seen':
+            $this->storeMessage($conversation, 'system', 'event', 'Người dùng đã đọc tin nhắn');
+            break;
+
+        /** ----------------
+         *  DEFAULT
+         * ---------------- */
+        default:
+            Log::warning(
+                "Unhandled Zalo event: $event | Payload: " . json_encode($request->all(), JSON_UNESCAPED_UNICODE)
+            );
+            $this->storeMessage($conversation, 'system', 'event', "Sự kiện khác: $event");
+            break;
+    }
+
+    return response()->json(['status' => 'ok']);
+}
+
 
     private function resolveExternalUserId(Request $request, string $event): ?string
     {
