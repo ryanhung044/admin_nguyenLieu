@@ -141,29 +141,30 @@ class ConversationController extends Controller
             // 🔹 Lấy access_token
             $accessToken = $this->getZaloAccessToken();
 
-            // 🔹 Gọi API lấy thông tin user từ Zalo
-            $url = "https://openapi.zalo.me/v3.0/oa/getprofile";
+            // 🔹 API v3: lấy thông tin user
+            $url = "https://openapi.zalo.me/v3.0/oa/user/getprofile";
             $response = Http::withHeaders([
-                'access_token' => $accessToken,
-            ])->get($url, [
+                'Authorization' => "Bearer {$accessToken}",
+            ])->post($url, [
                 'user_id' => $externalId,
             ]);
 
             $data = $response->json();
-            Log::info("Zalo getprofile response", $data);
+            Log::info("Zalo v3 getprofile response", $data);
 
             $name   = $data['data']['display_name'] ?? 'Zalo User';
             $avatar = $data['data']['avatar'] ?? null;
 
             // 🔹 Tạo mới user
             $user = User::create([
-                'name'     => $name,
+                'name'      => $name,
                 'full_name' => $name,
-                'avatar'   => $avatar,
-                'zalo_id'  => $externalId,
-                'role'     => 'user',
+                'avatar'    => $avatar,
+                'zalo_id'   => $externalId,
+                'role'      => 'user',
             ]);
         }
+
         switch ($event) {
             /** ----------------
              *  USER SEND EVENTS
