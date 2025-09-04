@@ -84,3 +84,12 @@ Route::post('/order/update-status-payment', [ClientController::class, 'updateSta
 Route::post('/webhook/zalo', [ConversationController::class, 'zalo']);
 Route::post('/webhook/facebook', [ConversationController::class, 'facebook']);
 Route::get('/webhook/zalo', [ConversationController::class, 'zaloCallback']);
+Route::get('/webhook/facebook', function (Request $request) {
+    $verifyToken = 'my_fb_wdfasdfasdfasdfebhook_secretdafsdfasasdfasdfasdfasdfsdffsdfuyjsfgt456gdfsg34';
+
+    if ($request->get('hub_verify_token') === $verifyToken) {
+        return response($request->get('hub_challenge'), 200);
+    }
+
+    return response('Error, wrong validation token', 403);
+});
