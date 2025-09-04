@@ -314,13 +314,15 @@ class ConversationController extends Controller
             // 🔹 Lấy access_token
             $accessToken = $this->getZaloAccessToken();
 
-            $url = "https://openapi.zalo.me/v3.0/oa/user/getprofile?data=" . urlencode(json_encode([
-                "user_id" => $externalId
-            ]));
+            $url = 'https://openapi.zalo.me/v3.0/oa/user/detail';
+
+            $params = [
+                'data' => json_encode(['user_id' => $externalId])
+            ];
 
             $response = Http::withHeaders([
                 'access_token' => $accessToken,
-            ])->get($url);
+            ])->get($url, $params);
 
             // Debug log
             Log::info("Zalo v3 getprofile raw: " . $response->body());
