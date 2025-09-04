@@ -545,7 +545,7 @@ class ConversationController extends Controller
     {
         $verifyToken = 'my_fb_wdfasdfasdfasdfebhook_secretdafsdfasasdfasdfasdfasdfsdffsdfuyjsfgt456gdfsg34';
 
-        // 🔹 Bước 1: Verify khi cấu hình webhook trên Meta
+        // 🔹 Bước 1: Verify khi cấu hình webhook
         if ($request->isMethod('get')) {
             if ($request->get('hub_verify_token') === $verifyToken) {
                 return response($request->get('hub_challenge'), 200);
@@ -557,60 +557,75 @@ class ConversationController extends Controller
         Log::info('Facebook Webhook', $request->all());
 
         if ($request->object === 'page') {
-            Log::info('🔹 Nhận object = page');
-
             foreach ($request->entry as $entry) {
-                Log::info('📥 Entry:', $entry);
-
                 foreach ($entry['messaging'] ?? [] as $msg) {
-                    Log::info('💬 Tin nhắn:', $msg);
+                    $senderId = $msg['sender']['id'] ?? null;
 
+                    // 1. Tin nhắn text
                     if (isset($msg['message']['text'])) {
-                        $senderId = $msg['sender']['id'] ?? null;
-                        $text     = $msg['message']['text'] ?? '';
+                        $this->saveMessage($senderId, 'text', $msg['message']['text']);
+                    }
 
-                        Log::info("👤 SenderID: {$senderId}, 📄 Text: {$text}");
-
-                        try {
-                            // Tạo hoặc tìm hội thoại
-                            $conversation = Conversation::firstOrCreate(
-                                ['platform' => 'facebook', 'external_id' => $senderId],
-                                ['last_message' => '', 'last_time' => now()]
-                            );
-                            Log::info("✅ Tìm/Tạo hội thoại ID: {$conversation->id}");
-
-                            // Lưu message
-                            $conversation->messages()->create([
-                                'sender_type'  => 'user',
-                                'message_type' => 'text',
-                                'message_text' => $text,
-                                'sent_at'      => now(),
-                            ]);
-                            Log::info("💾 Lưu message thành công cho conversation {$conversation->id}");
-
-                            // Cập nhật hội thoại
-                            $conversation->update([
-                                'last_message' => $text,
-                                'last_time'    => now(),
-                            ]);
-                            Log::info("🔄 Cập nhật hội thoại {$conversation->id} với last_message={$text}");
-                        } catch (\Exception $e) {
-                            Log::error("❌ Lỗi khi xử lý message: " . $e->getMessage(), [
-                                'trace' => $e->getTraceAsString()
-                            ]);
+                    // 2. Tin nhắn có đính kèm (ảnh, video, file...)
+                    elseif (isset($msg['message']['attachments'])) {
+                        foreach ($msg['message']['attachments'] as $attachment) {
+                            $type = $attachment['type'] ?? 'file';
+                            $url  = $attachment['payload']['url'] ?? json_encode($attachment);
+                            $this->saveMessage($senderId, $type, $url);
                         }
+                    }
+
+                    // 3. Người dùng bấm nút (postback)
+                    elseif (isset($msg['postback']['payload'])) {
+                        $payload = $msg['postback']['payload'];
+                        $this->saveMessage($senderId, 'postback', $payload);
+                    }
+
+                    // 4. Delivery report (xác nhận đã gửi đến user)
+                    elseif (isset($msg['delivery'])) {
+                        $delivery = json_encode($msg['delivery']);
+                        $this->saveMessage($senderId, 'system', "Delivered: $delivery");
+                    }
+
+                    // 5. Read report (user đã đọc)
+                    elseif (isset($msg['read'])) {
+                        $read = json_encode($msg['read']);
+                        $this->saveMessage($senderId, 'system', "Read: $read");
                     } else {
-                        Log::info("⚠️ Không có message.text trong msg", $msg);
+                        Log::info("⚠️ Event không xử lý", $msg);
                     }
                 }
             }
-        } else {
-            Log::warning('⚠️ Object không phải page:', $request->all());
         }
-
 
         return response()->json(['status' => 'ok']);
     }
+
+    /**
+     * Lưu hội thoại + message
+     */
+    private function saveMessage($senderId, $type, $content)
+    {
+        if (!$senderId) return;
+
+        $conversation = Conversation::firstOrCreate(
+            ['platform' => 'facebook', 'external_id' => $senderId],
+            ['last_message' => '', 'last_time' => now()]
+        );
+
+        $conversation->messages()->create([
+            'sender_type'  => 'user',  // nếu page gửi thì đổi thành 'admin'
+            'message_type' => $type,
+            'message_text' => $content,
+            'sent_at'      => now(),
+        ]);
+
+        $conversation->update([
+            'last_message' => $content,
+            'last_time'    => now(),
+        ]);
+    }
+
 
 
     public function index()
