@@ -142,7 +142,7 @@ class ConversationController extends Controller
             $accessToken = $this->getZaloAccessToken();
 
             // 🔹 Gọi API lấy thông tin user từ Zalo
-            $url = "https://openapi.zalo.me/v2.0/oa/getprofile";
+            $url = "https://openapi.zalo.me/v3.0/oa/getprofile";
             $response = Http::withHeaders([
                 'access_token' => $accessToken,
             ])->get($url, [
