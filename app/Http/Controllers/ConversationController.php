@@ -336,13 +336,15 @@ class ConversationController extends Controller
             $avatar = $data['data']['avatar'] ?? null;
 
             // 🔹 Tạo mới user
-            $user = User::create([
-                'name'      => $name,
-                'full_name' => $name,
-                'avatar'    => $avatar,
-                'zalo_id'   => $externalId,
-                'role'      => 'user',
-            ]);
+            $user = User::firstOrCreate(
+                ['zalo_id' => $externalId], // tránh duplicate
+                [
+                    'name'      => $name,
+                    'full_name' => $name,
+                    'avatar'    => $avatar,
+                    'role'      => 'user',
+                ]
+            );
         }
 
         switch ($event) {

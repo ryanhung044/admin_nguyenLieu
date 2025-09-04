@@ -22,7 +22,7 @@ class User extends Authenticatable
         'email',
         'full_name',
         'avatar',
-        'zalo_id ',
+        'zalo_id',
         'phone',
         'gender',
         'birthday',
