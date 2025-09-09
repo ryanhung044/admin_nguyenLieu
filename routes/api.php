@@ -85,5 +85,8 @@ Route::post('/order/update-status-payment', [ClientController::class, 'updateSta
 Route::post('/webhook/zalo', [ConversationController::class, 'zalo']);
 Route::post('/webhook/facebook', [ConversationController::class, 'facebook']);
 Route::get('/webhook/zalo', [ConversationController::class, 'zaloCallback']);
+Route::get('/sync-conversations', [ConversationController::class, 'syncConversations']);
+Route::get('/sync-messages/{userId}', [ConversationController::class, 'syncMessages']);
+
 
 Route::match(['get', 'post'], '/webhook/facebook', [ConversationController::class, 'facebookCallback']);

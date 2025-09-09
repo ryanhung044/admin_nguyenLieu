@@ -541,11 +541,71 @@ class ConversationController extends Controller
 
 
     // Facebook webhook
+    // public function facebookCallback(Request $request)
+    // {
+    //     $verifyToken = 'my_fb_wdfasdfasdfasdfebhook_secretdafsdfasasdfasdfasdfasdfsdffsdfuyjsfgt456gdfsg34';
+
+    //     // 🔹 Bước 1: Verify khi cấu hình webhook
+    //     if ($request->isMethod('get')) {
+    //         if ($request->get('hub_verify_token') === $verifyToken) {
+    //             return response($request->get('hub_challenge'), 200);
+    //         }
+    //         return response('Error, wrong validation token', 403);
+    //     }
+
+    //     // 🔹 Bước 2: Nhận event từ FB (POST)
+    //     Log::info('Facebook Webhook', $request->all());
+
+    //     if ($request->object === 'page') {
+    //         foreach ($request->entry as $entry) {
+    //             foreach ($entry['messaging'] ?? [] as $msg) {
+    //                 $senderId = $msg['sender']['id'] ?? null;
+
+    //                 // 1. Tin nhắn text
+    //                 if (isset($msg['message']['text'])) {
+    //                     $this->saveMessage($senderId, 'text', $msg['message']['text']);
+    //                 }
+
+    //                 // 2. Tin nhắn có đính kèm (ảnh, video, file...)
+    //                 elseif (isset($msg['message']['attachments'])) {
+    //                     foreach ($msg['message']['attachments'] as $attachment) {
+    //                         $type = $attachment['type'] ?? 'file';
+    //                         $url  = $attachment['payload']['url'] ?? json_encode($attachment);
+    //                         $this->saveMessage($senderId, $type, $url);
+    //                     }
+    //                 }
+
+    //                 // 3. Người dùng bấm nút (postback)
+    //                 elseif (isset($msg['postback']['payload'])) {
+    //                     $payload = $msg['postback']['payload'];
+    //                     $this->saveMessage($senderId, 'postback', $payload);
+    //                 }
+
+    //                 // 4. Delivery report (xác nhận đã gửi đến user)
+    //                 elseif (isset($msg['delivery'])) {
+    //                     $delivery = json_encode($msg['delivery']);
+    //                     $this->saveMessage($senderId, 'system', "Delivered: $delivery");
+    //                 }
+
+    //                 // 5. Read report (user đã đọc)
+    //                 elseif (isset($msg['read'])) {
+    //                     $read = json_encode($msg['read']);
+    //                     $this->saveMessage($senderId, 'system', "Read: $read");
+    //                 } else {
+    //                     Log::info("⚠️ Event không xử lý", $msg);
+    //                 }
+    //             }
+    //         }
+    //     }
+
+    //     return response()->json(['status' => 'ok']);
+    // }
+
     public function facebookCallback(Request $request)
     {
         $verifyToken = 'my_fb_wdfasdfasdfasdfebhook_secretdafsdfasasdfasdfasdfasdfsdffsdfuyjsfgt456gdfsg34';
 
-        // 🔹 Bước 1: Verify khi cấu hình webhook
+        // 🔹 Bước 1: Verify webhook
         if ($request->isMethod('get')) {
             if ($request->get('hub_verify_token') === $verifyToken) {
                 return response($request->get('hub_challenge'), 200);
@@ -553,80 +613,96 @@ class ConversationController extends Controller
             return response('Error, wrong validation token', 403);
         }
 
-        // 🔹 Bước 2: Nhận event từ FB (POST)
         Log::info('Facebook Webhook', $request->all());
 
-        if ($request->object === 'page') {
-            foreach ($request->entry as $entry) {
-                foreach ($entry['messaging'] ?? [] as $msg) {
-                    $senderId = $msg['sender']['id'] ?? null;
+        foreach ($request->entry ?? [] as $entry) {
 
-                    // 1. Tin nhắn text
+            // 1️⃣ Messenger events
+            foreach ($entry['messaging'] ?? [] as $msg) {
+                $senderId = $msg['sender']['id'] ?? null;
+
+                if (!$senderId) {
+                    Log::warning('Cannot resolve senderId: ' . json_encode($msg));
+                    continue;
+                }
+
+                // ✅ Conversation
+                $conversation = Conversation::firstOrCreate(
+                    ['platform' => 'facebook', 'external_id' => $senderId],
+                    ['user_id' => $senderId, 'last_message' => '', 'last_time' => now()]
+                );
+
+                // ✅ User profile
+                $user = User::where('zalo_id', $senderId)->first();
+                if (!$user) {
+                    $accessToken = config('services.facebook.page_access_token');
+                    $url = "https://graph.facebook.com/v23.0/$senderId?fields=name,picture&access_token=$accessToken";
+                    $response = Http::get($url)->json();
+                    $name = $response['name'] ?? 'FB User';
+                    $avatar = $response['picture']['data']['url'] ?? null;
+
+                    $user = User::updateOrCreate(
+                        ['zalo_id' => $senderId],
+                        ['name' => $name, 'full_name' => $name, 'avatar' => $avatar, 'role' => 'user']
+                    );
+                }
+
+                // ✅ Xử lý event messaging
+                if (isset($msg['message'])) {
+
                     if (isset($msg['message']['text'])) {
-                        $this->saveMessage($senderId, 'text', $msg['message']['text']);
+                        $this->storeMessage($conversation, 'user', 'text', $msg['message']['text']);
                     }
 
-                    // 2. Tin nhắn có đính kèm (ảnh, video, file...)
-                    elseif (isset($msg['message']['attachments'])) {
-                        foreach ($msg['message']['attachments'] as $attachment) {
-                            $type = $attachment['type'] ?? 'file';
-                            $url  = $attachment['payload']['url'] ?? json_encode($attachment);
-                            $this->saveMessage($senderId, $type, $url);
+                    if (isset($msg['message']['attachments'])) {
+                        foreach ($msg['message']['attachments'] as $att) {
+                            $type = $att['type'] ?? 'file';
+                            $url  = $att['payload']['url'] ?? json_encode($att);
+                            $this->storeMessage($conversation, 'user', $type, $url);
                         }
                     }
 
-                    // 3. Người dùng bấm nút (postback)
-                    elseif (isset($msg['postback']['payload'])) {
-                        $payload = $msg['postback']['payload'];
-                        $this->saveMessage($senderId, 'postback', $payload);
+                    if (isset($msg['message']['is_echo'])) {
+                        $this->storeMessage($conversation, 'system', 'echo', json_encode($msg['message']));
                     }
 
-                    // 4. Delivery report (xác nhận đã gửi đến user)
-                    elseif (isset($msg['delivery'])) {
-                        $delivery = json_encode($msg['delivery']);
-                        $this->saveMessage($senderId, 'system', "Delivered: $delivery");
-                    }
-
-                    // 5. Read report (user đã đọc)
-                    elseif (isset($msg['read'])) {
-                        $read = json_encode($msg['read']);
-                        $this->saveMessage($senderId, 'system', "Read: $read");
-                    } else {
-                        Log::info("⚠️ Event không xử lý", $msg);
+                    if (isset($msg['message']['reactions'])) {
+                        $this->storeMessage($conversation, 'user', 'reaction', json_encode($msg['message']['reactions']));
                     }
                 }
+
+                if (isset($msg['postback'])) {
+                    $payload = $msg['postback']['payload'] ?? '';
+                    $this->storeMessage($conversation, 'user', 'postback', $payload);
+                }
+
+                if (isset($msg['referral'])) {
+                    $this->storeMessage($conversation, 'user', 'referral', json_encode($msg['referral']));
+                }
+
+                if (isset($msg['delivery'])) {
+                    $this->storeMessage($conversation, 'system', 'delivery', json_encode($msg['delivery']));
+                }
+
+                if (isset($msg['read'])) {
+                    $this->storeMessage($conversation, 'system', 'read', json_encode($msg['read']));
+                }
+
+                if (isset($msg['account_linking'])) {
+                    $this->storeMessage($conversation, 'system', 'account_linking', json_encode($msg['account_linking']));
+                }
+            }
+
+            // 2️⃣ Page-level changes (leadgen, feed, members...)
+            foreach ($entry['changes'] ?? [] as $change) {
+                $field = $change['field'] ?? 'unknown';
+                $value = $change['value'] ?? [];
+                $this->storeMessage($conversation ?? null, 'system', $field, json_encode($value));
             }
         }
 
         return response()->json(['status' => 'ok']);
     }
-
-    /**
-     * Lưu hội thoại + message
-     */
-    private function saveMessage($senderId, $type, $content)
-    {
-        if (!$senderId) return;
-
-        $conversation = Conversation::firstOrCreate(
-            ['platform' => 'facebook', 'external_id' => $senderId],
-            ['last_message' => '', 'last_time' => now()]
-        );
-
-        $conversation->messages()->create([
-            'sender_type'  => 'user',  // nếu page gửi thì đổi thành 'admin'
-            'message_type' => $type,
-            'message_text' => $content,
-            'sent_at'      => now(),
-        ]);
-
-        $conversation->update([
-            'last_message' => $content,
-            'last_time'    => now(),
-        ]);
-    }
-
-
 
     public function index()
     {
@@ -679,18 +755,18 @@ class ConversationController extends Controller
         $this->sendMessageToUser($conversation->external_id, $request->content);
 
 
-        // 3. Lưu DB
-        $conversation->messages()->create([
-            'sender_type'   => 'admin',
-            'message_type'  => 'text',
-            'message_text'  => $request->content,
-            'sent_at'       => now(),
-        ]);
+        // // 3. Lưu DB
+        // $conversation->messages()->create([
+        //     'sender_type'   => 'admin',
+        //     'message_type'  => 'text',
+        //     'message_text'  => $request->content,
+        //     'sent_at'       => now(),
+        // ]);
 
-        $conversation->update([
-            'last_message' => $request->content,
-            'last_time'    => now(),
-        ]);
+        // $conversation->update([
+        //     'last_message' => $request->content,
+        //     'last_time'    => now(),
+        // ]);
 
         return redirect()
             ->route('admin.conversations.show', $conversation->id)
@@ -861,5 +937,100 @@ class ConversationController extends Controller
         }
 
         return response()->json(['status' => 'success', 'synced' => count($chats)]);
+    }
+
+
+    // --------------------------
+    // 1) Đồng bộ danh sách user đang chat
+    // --------------------------
+    public function syncConversations()
+    {
+        $accessToken = 'Zjp93so6tqo8syK8ROZQJu_LnGrXaTC2zAh97b2lg3-seV8d2O2a6vJVoIOfuxSpbBcf4WgsmrtbcQf1TyJ0HTJYWr5QfTuHmvYY52U1l0Q_lge2NRQo9kwftJPphBmQwlNcNdFqfsJ7shiZNz-a3UN-s243vAOxk-V7EbZ_hG39qlT0VV6pR9xSqr4dvgvKYRpKK3AkiNMZziyx8gZGBgENXm8oYiKvrPRV1aR5iZV6nguAMztGEkYEg0fStD0rikUT9pJPn66fuQDZKkB3Pjxzedb-eCXRuglUIbQ9c0-qYkyeDgssEfY4t1OggP1NduJL6NZSk2APsCa6AjsD9PA1opyRW9qvZDd61ZN1WnUCwUe90_gA1kVK_WXYqxWuW83d2WE8k3IYb-SW0gtmFEprYm0Chv50QNhMQYvsR9ZKG0';
+        // dd($accessToken);
+        if (!$accessToken) return response()->json(['error' => 'Cannot get access token'], 500);
+
+        $url = 'https://openapi.zalo.me/v3.0/oa/conversations';
+
+        $resp = Http::get($url, ['access_token' => $accessToken]);
+        $data = $resp->json();
+
+        if (($data['error'] ?? 1) !== 0) {
+            Log::info('Zalo getConversations response', [
+                'status' => $resp->status(),
+                'body'   => $resp->body(),
+            ]);
+
+            return response()->json(['error' => 'Failed to get conversations']);
+        }
+
+        $conversations = $data['data'] ?? [];
+
+        foreach ($conversations as $conv) {
+            $externalId = $conv['user_id'];
+
+            Conversation::firstOrCreate(
+                ['platform' => 'zalo', 'external_id' => $externalId],
+                ['last_message' => '', 'last_time' => now()]
+            );
+
+            // Tạo user nếu chưa có
+            $user = User::firstOrCreate(
+                ['zalo_id' => $externalId],
+                ['name' => 'Zalo User', 'role' => 'user']
+            );
+        }
+
+        return response()->json(['message' => 'Conversations synced', 'count' => count($conversations)]);
+    }
+
+    // --------------------------
+    // 2) Đồng bộ tin nhắn của user
+    // --------------------------
+    public function syncMessages($userId)
+    {
+        $accessToken = $this->getZaloAccessToken();
+        if (!$accessToken) return response()->json(['error' => 'Cannot get access token'], 500);
+
+        $conversation = Conversation::where('platform', 'zalo')->where('external_id', $userId)->first();
+        if (!$conversation) return response()->json(['error' => 'Conversation not found'], 404);
+
+        $offset = 0;
+        do {
+            $url = 'https://openapi.zalo.me/v3.0/oa/getmessages';
+            $resp = Http::get($url, [
+                'access_token' => $accessToken,
+                'user_id'      => $userId,
+                'offset'       => $offset,
+                'count'        => 20,
+            ]);
+
+            $data = $resp->json();
+            if (($data['error'] ?? 1) !== 0) {
+                Log::info('Zalo getMessages failed' . $data);
+                Log::info('Zalo getMessages response', [
+                    'status' => $resp->status(),
+                    'body'   => $resp->body(),
+                ]);
+                return response()->json(['error' => 'Failed to get messages']);
+            }
+
+            $messages = $data['data'] ?? [];
+
+            foreach ($messages as $msg) {
+                $conversation->messages()->firstOrCreate(
+                    ['message_id' => $msg['message_id']],
+                    [
+                        'sender_type'  => $msg['sender'], // user/oa
+                        'message_type' => 'text',         // có thể detect type khác nếu cần
+                        'message_text' => $msg['text'] ?? '[Không có text]',
+                        'sent_at'      => isset($msg['timestamp']) ? date('Y-m-d H:i:s', $msg['timestamp']) : now(),
+                    ]
+                );
+            }
+
+            $offset += 20;
+        } while (count($messages) == 20);
+
+        return response()->json(['message' => 'Messages synced', 'count' => count($messages)]);
     }
 }
