@@ -671,6 +671,20 @@ class ConversationController extends Controller
                     }
                 }
 
+                if (isset($msg['message_context'])) {
+                    $context = $msg['message_context'];
+
+                    foreach ($context['detections'] ?? [] as $det) {
+                        $type = $det['type'] ?? 'unknown';
+                        $this->storeMessage($conversation, 'system', "message_context_detection_$type", json_encode($det));
+                    }
+
+                    foreach ($context['suggestions'] ?? [] as $sug) {
+                        $type = $sug['type'] ?? 'unknown';
+                        $this->storeMessage($conversation, 'system', "message_context_suggestion_$type", json_encode($sug));
+                    }
+                }
+
                 if (isset($msg['postback'])) {
                     $payload = $msg['postback']['payload'] ?? '';
                     $this->storeMessage($conversation, 'user', 'postback', $payload);
