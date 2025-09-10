@@ -970,7 +970,7 @@ class ConversationController extends Controller
             $content = $this->uploadFileToZalo($filePath, $type); // lấy URL public từ Zalo
         }
 
-        dd($content);
+        // dd($content);
         switch ($type) {
             case 'text':
                 $message['text'] = $content; // string
