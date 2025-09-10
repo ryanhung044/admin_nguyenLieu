@@ -25,7 +25,7 @@
 
         <!-- Cột bên phải: Khung chat -->
         <div class="col-md-8">
-            <div class="card">
+            <div class="card" style="height: 80vh">
                 <div class="card-header">
                     <h5 class="mb-0">Hội thoại với {{ $conversation?->user?->full_name }}</h5>
                 </div>
@@ -84,6 +84,34 @@
             if (chatBox) {
                 chatBox.scrollTop = chatBox.scrollHeight;
             }
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            let chatBox = document.getElementById("chat-box");
+
+            window.Echo.channel("conversation.{{ $conversation->id }}")
+                .listen(".MessageCreated", (e) => {
+                    let msg = e.message;
+
+                    let div = document.createElement("div");
+                    div.className = "d-flex mb-3 " +
+                        (msg.sender_type === 'admin' ? "justify-content-end" :
+                            msg.sender_type === 'system' ? "justify-content-center" : "justify-content-start");
+
+                    div.innerHTML = `
+                <div class="p-2 rounded ${msg.sender_type === 'admin' ? 'bg-primary text-white' :
+                                        msg.sender_type === 'system' ? 'bg-light text-muted fst-italic' :
+                                        'bg-light border'}" style="max-width:70%">
+                    ${msg.message_type === 'text' ? msg.message_text : '[Nội dung khác]'}
+                    <small class="text-muted d-block mt-1" style="font-size:12px;">
+                        ${msg.created_at}
+                    </small>
+                </div>`;
+
+                    chatBox.appendChild(div);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                });
         });
     </script>
 @endsection

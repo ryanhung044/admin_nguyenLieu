@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\MessageCreated;
 use App\Models\Conversation;
 use App\Http\Requests\StoreConversationRequest;
 use App\Http\Requests\UpdateConversationRequest;
@@ -360,18 +361,21 @@ class ConversationController extends Controller
              * ---------------- */
             case 'user_send_text':
                 $text = $request->input('message.text');
-                $this->storeMessage($conversation, 'user', 'text', $text);
+                $msg = $this->storeMessage($conversation, 'user', 'text', $text);
+                event(new MessageCreated($msg));
                 break;
 
             case 'user_send_image':
                 foreach ($request->input('message.attachments', []) as $img) {
-                    $this->storeMessage(
+                    $msg = $this->storeMessage(
                         $conversation,
                         'user',
                         'image',
                         $img['payload']['url'] ?? '[Ảnh]'
                     );
+                    event(new MessageCreated($msg));
                 }
+
                 break;
 
             case 'user_send_sticker':
@@ -526,7 +530,7 @@ class ConversationController extends Controller
 
     private function storeMessage(Conversation $conversation, string $senderType, string $msgType, ?string $msgText)
     {
-        $conversation->messages()->create([
+        $message = $conversation->messages()->create([
             'sender_type'  => $senderType,
             'message_type' => $msgType,
             'message_text' => $msgText,
@@ -537,6 +541,8 @@ class ConversationController extends Controller
             'last_message' => $msgText,
             'last_time'    => now(),
         ]);
+
+        return $message;
     }
 
 
