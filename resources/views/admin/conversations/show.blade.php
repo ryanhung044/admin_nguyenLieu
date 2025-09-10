@@ -272,6 +272,7 @@
                 formData.append('content', content);
 
                 if (file) {
+                    
                     const mime = file.type;
                     if (mime.startsWith('image/')) type = 'image';
                     else if (mime.startsWith('video/')) type = 'video';
@@ -279,10 +280,8 @@
                     formData.set('type', type);
                     formData.set('content', file);
                 }
-                for (let pair of formData.entries()) {
-                    console.log(pair[0] + ': ' + pair[1]);
-                }
 
+                
                 const res = await fetch(`/api/conversations/${conversationId}/messages`, {
                     method: 'POST',
                     headers: {

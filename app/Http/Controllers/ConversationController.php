@@ -796,11 +796,7 @@ class ConversationController extends Controller
         $type = $request->input('type');
         $content = $request->file('content') ?? $request->input('content');
 
-        if ($request->hasFile('content')) {
-            // upload file lên server hoặc lấy URL public
-            $path = $request->file('content')->store('uploads', 'public');
-            $content = asset('storage/' . $path);
-        }
+
 
         // gọi hàm gửi message lên Zalo
         $res = $this->sendMessageToUser($conversation->external_id, $type, $content);
@@ -933,96 +929,116 @@ class ConversationController extends Controller
     private function uploadFileToZalo($filePath, $type)
     {
         $accessToken = $this->getZaloAccessToken();
-        $url = 'https://openapi.zalo.me/v2.0/oa/upload/file';
-
         $client = new \GuzzleHttp\Client();
-        $response = $client->post($url, [
+
+        switch ($type) {
+            case 'image':
+                $url = 'https://openapi.zalo.me/v2.0/oa/upload/image';
+                break;
+            case 'video':
+                $url = 'https://openapi.zalo.me/v2.0/oa/upload/video';
+                break;
+            default: // file document
+                $url = 'https://openapi.zalo.me/v2.0/oa/upload/file';
+        }
+
+        $mime = mime_content_type($filePath);
+
+        // kiểm tra định dạng hợp lệ
+        if ($type === 'image' && !in_array($mime, ['image/png', 'image/jpeg'])) {
+            throw new \Exception("Zalo v2 chỉ chấp nhận image PNG hoặc JPEG. File: $mime");
+        }
+        if ($type === 'video' && $mime !== 'video/mp4') {
+            throw new \Exception("Zalo v2 chỉ chấp nhận video MP4. File: $mime");
+        }
+        if ($type === 'file' && !in_array($mime, ['application/pdf', 'application/msword', 'text/csv'])) {
+            throw new \Exception("Zalo v2 chỉ chấp nhận file PDF, DOC, CSV. File: $mime");
+        }
+
+        $response = $client->request('POST', $url, [
             'headers' => [
-                'access_token' => $accessToken
+                'access_token' => $accessToken,
             ],
             'multipart' => [
                 [
                     'name' => 'file',
                     'contents' => fopen($filePath, 'r')
-                ],
-                [
-                    'name' => 'type',
-                    'contents' => $type // image/file/video
                 ]
             ]
         ]);
 
         $body = json_decode($response->getBody()->getContents(), true);
-        if (!empty($body['data']['url'])) {
-            return $body['data']['url']; // URL public từ Zalo
-        }
-        throw new \Exception("Upload to Zalo failed: " . json_encode($body));
+        return $body['data']['attachment_id'];
     }
 
-    private function sendMessageToUser($userId, string $type, $content)
-    {
-        $accessToken = $this->getZaloAccessToken();
-        $url = "https://openapi.zalo.me/v3.0/oa/message/cs";
-        $message = [];
 
-        if (in_array($type, ['image', 'file', 'video']) && $content instanceof \Illuminate\Http\UploadedFile) {
-            $filePath = $content->getRealPath();
-            $content = $this->uploadFileToZalo($filePath, $type); // lấy URL public từ Zalo
-        }
 
-        dd($content);
-        switch ($type) {
-            case 'text':
-                $message['text'] = $content; // string
-                break;
 
-            case 'image':
-            case 'file':
-            case 'video':
-                $message['attachment'] = [
-                    'type' => $type,
-                    'payload' => [
-                        'url' => $content // $content là URL public
+    private function sendMessageToUser($userId, string $type, $content, $text = '')
+{
+    $accessToken = $this->getZaloAccessToken();
+    $client = new \GuzzleHttp\Client();
+
+    $message = [];
+
+    if (in_array($type, ['image', 'video'])) {
+        // Nếu $content là URL trực tiếp
+        $attachment = [
+            'type' => 'template',
+            'payload' => [
+                'template_type' => 'media',
+                'elements' => [
+                    [
+                        'media_type' => $type,
+                        'url' => $content
                     ]
-                ];
-                break;
-
-            case 'sticker':
-                $message['sticker'] = [
-                    'sticker_id' => $content // $content là ID sticker
-                ];
-                break;
-
-            default:
-                throw new \Exception("Loại tin nhắn không hợp lệ: $type");
-        }
-
-        $payload = [
-            "recipient" => [
-                "user_id" => $userId
-            ],
-            "message" => $message
+                ]
+            ]
         ];
+        $message['attachment'] = $attachment;
 
-
-
-        $client = new \GuzzleHttp\Client();
-
-        try {
-            $response = $client->post($url, [
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'access_token' => $accessToken,
-                ],
-                'json' => $payload,
-            ]);
-
-            return json_decode($response->getBody()->getContents(), true);
-        } catch (\Exception $e) {
-            Log::error("Send message error: " . $e->getMessage());
-            return false;
+        if ($text) {
+            $message['text'] = $text; // text kèm media
         }
+    } elseif (in_array($type, ['file', 'video_upload'])) {
+        // Nếu $content là file upload (UploadedFile)
+        $filePath = $content->getRealPath();
+        $attachmentId = $this->uploadFileToZalo($filePath, $type === 'video_upload' ? 'video' : 'file');
+
+        $message['attachment'] = [
+            'type' => $type === 'video_upload' ? 'video' : 'file',
+            'payload' => ['token' => $attachmentId]
+        ];
+    } elseif ($type === 'text') {
+        $message['text'] = $content;
+    } elseif ($type === 'sticker') {
+        $message['sticker'] = ['sticker_id' => $content];
+    } else {
+        throw new \Exception("Loại tin nhắn không hợp lệ: $type");
     }
+
+    $body = [
+        'recipient' => ['user_id' => $userId],
+        'message' => $message
+    ];
+
+    try {
+        $response = $client->post('https://openapi.zalo.me/v3.0/oa/message/cs', [
+            'headers' => [
+                'Content-Type' => 'application/json',
+                'access_token' => $accessToken
+            ],
+            'json' => $body
+        ]);
+
+        return json_decode($response->getBody()->getContents(), true);
+    } catch (\Exception $e) {
+        Log::error("Send message error: " . $e->getMessage());
+        return false;
+    }
+}
+
+
 
 
 
