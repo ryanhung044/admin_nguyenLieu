@@ -33,14 +33,14 @@
                     @foreach ($messages as $msg)
                         <div
                             class="d-flex mb-3 
-    @if ($msg->sender_type == 'admin') justify-content-end 
-    @elseif ($msg->sender_type == 'system') justify-content-center 
-    @else justify-content-start @endif">
+                            @if ($msg->sender_type == 'admin') justify-content-end 
+                            @elseif ($msg->sender_type == 'system') justify-content-center 
+                            @else justify-content-start @endif">
 
                             <div class="p-2 rounded 
-        @if ($msg->sender_type == 'admin') bg-primary text-white 
-        @elseif ($msg->sender_type == 'system') bg-light text-muted fst-italic 
-        @else bg-light border @endif"
+                                @if ($msg->sender_type == 'admin') bg-primary text-white 
+                                @elseif ($msg->sender_type == 'system') bg-light text-muted fst-italic 
+                                @else bg-light border @endif"
                                 style="max-width: 70%;">
 
                                 {{-- Hiển thị message --}}
@@ -57,7 +57,7 @@
                                 @endif
 
                                 <small class="text-muted d-block mt-1" style="font-size: 12px;">
-                                    {{ \Carbon\Carbon::parse($msg->created_at)->format('d/m/Y H:i') }}
+                                    {{ \Carbon\Carbon::parse($msg->created_at)->format('H:i d/m/Y ') }}
                                 </small>
                             </div>
                         </div>
@@ -79,21 +79,95 @@
     </div>
 
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            let chatBox = document.getElementById("chat-box");
-            if (chatBox) {
-                chatBox.scrollTop = chatBox.scrollHeight;
-            }
+        window.Pusher = Pusher;
+
+        window.Echo = new Echo({
+            broadcaster: 'pusher',
+            key: '{{ env('PUSHER_APP_KEY') }}',
+            cluster: '{{ env('PUSHER_APP_CLUSTER') }}',
+            forceTLS: true
         });
     </script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             let chatBox = document.getElementById("chat-box");
+            if (chatBox) chatBox.scrollTop = chatBox.scrollHeight;
 
-            window.Echo.private("conversation.{{ $conversation->id }}")
-                .listen("MessageCreated", (e) => {
+            const conversation = @json($conversation); // Laravel helper
+
+            window.Echo.channel(`conversation.${conversation.id}`)
+                .listen('.MessageCreated', (e) => {
+                    console.log('MessageCreated', e);
+
+                    let msg = e.message;
+
+                    // Tạo div chứa message
+                    let div = document.createElement("div");
+                    div.className = "d-flex mb-3 " +
+                        (msg.sender_type === 'admin' ? "justify-content-end" :
+                            msg.sender_type === 'system' ? "justify-content-center" : "justify-content-start");
+
+                    // Xử lý nội dung theo loại message
+                    let contentHtml = '';
+                    switch (msg.message_type) {
+                        case 'text':
+                            contentHtml = `<div>${msg.message_text}</div>`;
+                            break;
+                        case 'image':
+                            contentHtml =
+                                `<div><img src="${msg.message_text}" alt="image" class="img-fluid rounded"></div>`;
+                            break;
+                        case 'sticker':
+                            contentHtml = `<div>[Sticker ID: ${msg.message_text}]</div>`;
+                            break;
+                        case 'event':
+                            contentHtml = `<div class="text-muted fst-italic">${msg.message_text}</div>`;
+                            break;
+                        default:
+                            contentHtml = `<div>[Không xác định]</div>`;
+                    }
+
+                    // Format thời gian
+                    let formattedTime = new Date(msg.sent_at).toLocaleString('vi-VN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+
+                    // Tạo innerHTML
+                    div.innerHTML = `
+                <div class="p-2 rounded ${msg.sender_type === 'admin' ? 'bg-primary text-white' :
+                                        msg.sender_type === 'system' ? 'bg-light text-muted fst-italic' :
+                                        'bg-light border'}" style="max-width:70%">
+                    ${contentHtml}
+                    <small class="text-muted d-block mt-1" style="font-size:12px;">
+                        ${formattedTime}
+                    </small>
+                </div>
+            `;
+
+                    chatBox.appendChild(div);
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                });
+        });
+    </script>
+
+    {{-- <script>
+        // Pusher.logToConsole = true;
+
+        document.addEventListener("DOMContentLoaded", function() {
+            let chatBox = document.getElementById("chat-box");
+            if (chatBox) {
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+            const conversation = @json($conversation); // Laravel helper
+            console.log(conversation.id);
+            window.Echo.channel(`conversation.${conversation.id}`)
+                .listen(".MessageCreated", (e) => {
                     console.log('MessageCreated');
-                    
+
                     let msg = e.message;
 
                     let div = document.createElement("div");
@@ -102,18 +176,22 @@
                             msg.sender_type === 'system' ? "justify-content-center" : "justify-content-start");
 
                     div.innerHTML = `
-                <div class="p-2 rounded ${msg.sender_type === 'admin' ? 'bg-primary text-white' :
-                                        msg.sender_type === 'system' ? 'bg-light text-muted fst-italic' :
-                                        'bg-light border'}" style="max-width:70%">
-                    ${msg.message_type === 'text' ? msg.message_text : '[Nội dung khác]'}
-                    <small class="text-muted d-block mt-1" style="font-size:12px;">
-                        ${msg.created_at}
-                    </small>
-                </div>`;
+                                        <div class="p-2 rounded ${msg.sender_type === 'admin' ? 'bg-primary text-white' :
+                                                                msg.sender_type === 'system' ? 'bg-light text-muted fst-italic' :
+                                                                'bg-light border'}" style="max-width:70%">
+                                            ${msg.message_type === 'text' ? msg.message_text : '[Nội dung khác]'}
+                                            <small class="text-muted d-block mt-1" style="font-size:12px;">
+                                                ${new Date(msg.sent_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                            </small>
+                                        </div>
+                                    `;
 
                     chatBox.appendChild(div);
                     chatBox.scrollTop = chatBox.scrollHeight;
                 });
+
+
+
         });
-    </script>
+    </script> --}}
 @endsection

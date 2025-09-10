@@ -78,26 +78,18 @@ class MessageCreated implements ShouldBroadcast
     /**
      * Kênh mà event sẽ phát ra
      */
+    // public function broadcastOn(): array
+    // {
+    //     return [
+    //         new PrivateChannel("conversation.{$this->conversationId}"),
+    //     ];
+    // }
+
+    // Sử dụng channel công khai thay vì private
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel("conversation.{$this->conversationId}"),
-        ];
-    }
-
-    /**
-     * Payload gửi ra ngoài
-     */
-    public function broadcastWith(): array
-    {
-        return [
-            'id'            => $this->message->id,
-            'conversation'  => $this->conversationId,
-            'sender_type'   => $this->message->sender_type,
-            'message_type'  => $this->message->message_type,
-            'message_text'  => $this->message->message_text,
-            'sent_at'       => $this->message->sent_at,
-            'user'          => $this->message->conversation->user,
+            "conversation.{$this->conversationId}"
         ];
     }
 }

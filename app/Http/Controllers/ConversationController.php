@@ -363,7 +363,7 @@ class ConversationController extends Controller
                 $text = $request->input('message.text');
                 $msg = $this->storeMessage($conversation, 'user', 'text', $text);
                 Log::info('$text' . $msg);
-                event(new MessageCreated($msg));
+                // event(new MessageCreated($msg));
                 break;
 
             case 'user_send_image':
@@ -374,7 +374,7 @@ class ConversationController extends Controller
                         'image',
                         $img['payload']['url'] ?? '[Ảnh]'
                     );
-                    event(new MessageCreated($msg));
+                    // event(new MessageCreated($msg));
                 }
 
                 break;
@@ -428,33 +428,14 @@ class ConversationController extends Controller
 
             case 'oa_send_text':
                 $text = $request->input('message.text');
-                $conversation->messages()->create([
-                    'sender_type'  => 'admin',
-                    'message_type' => 'text',
-                    'message_text' => $text,
-                    'sent_at'      => now(),
-                ]);
-
-                $conversation->update([
-                    'last_message' => $text,
-                    'last_time'    => now(),
-                ]);
+                $this->storeMessage($conversation, 'admin', 'text', $text);
                 break;
 
             case 'user_received_message':
                 $msgId = $request->input('message.msg_id');
-                $conversation->messages()->create([
-                    'sender_type'  => 'system',
-                    'message_type' => 'event',
-                    'message_text' => "User đã nhận tin nhắn ID: $msgId",
-                    'sent_at'      => now(),
-                ]);
-
-                $conversation->update([
-                    'last_message' => '[User đã nhận tin]',
-                    'last_time'    => now(),
-                ]);
+                $this->storeMessage($conversation, 'system', 'event', "User đã nhận tin nhắn ID: $msgId");
                 break;
+
 
             case 'broadcast_result':
                 $brId = $request->input('broadcast_id');
@@ -543,8 +524,9 @@ class ConversationController extends Controller
             'last_message' => $msgText,
             'last_time'    => now(),
         ]);
+        event(new MessageCreated($message));
 
-        return $message;
+        // return $message;
     }
 
 

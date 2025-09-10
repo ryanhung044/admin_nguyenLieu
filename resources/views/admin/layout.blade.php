@@ -17,6 +17,8 @@
     <meta name="zalo-platform-site-verification" content="VSs4B9Y-AmDxpl04-C9JMWZCtW7akWzOCZOr" />
     <!-- Fonts and icons -->
     <script src="/assets/js/plugin/webfont/webfont.min.js"></script>
+    <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.11.1/dist/echo.iife.js"></script>
     <script>
         WebFont.load({
             google: {
@@ -36,7 +38,7 @@
             },
         });
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"></script>
+    {{-- <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"></script> --}}
 
     <!-- CSS Files -->
     <link rel="stylesheet" href="/assets/css/bootstrap.min.css" />
@@ -975,62 +977,63 @@
     <script src="/assets/js/setting-demo.js"></script>
     <script src="/assets/js/demo.js"></script>
     {{-- <script src="{{ mix('js/app.js') }}"></script> --}}
-    <script src="https://js.pusher.com/8.4.0/pusher.min.js"></script>
+
+
     <!-- Thêm Axios từ CDN -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    {{-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> --}}
 
     <script>
-        document.querySelector("#logo_top").src = $ {
-            $AppSetting - > image
-        };
-        document.querySelector(".logo-header").src = $ {
-            $AppSetting - > image
-        };
+        // document.querySelector("#logo_top")?.src = $ {
+        //     $AppSetting - > image
+        // };
+        // document.querySelector(".logo-header").src = $ {
+        //     $AppSetting - > image
+        // };
 
 
-        Pusher.logToConsole = true;
+        // Pusher.logToConsole = true;
 
-        var pusher = new Pusher('ecc5ac907199f6950c31', {
-            cluster: 'ap1'
-        });
+        // var pusher = new Pusher('2200a37b5ce37c1b3aa1', {
+        //     cluster: 'ap1'
+        // });
 
-        var channel = pusher.subscribe('orders');
-        channel.bind('new.order.placed', function(data) {
-            console.log(data);
-            location.reload();
+        // var channel = pusher.subscribe('orders');
+        // channel.bind('new.order.placed', function(data) {
+        //     console.log(data);
+        //     location.reload();
 
-            $.notify({
-                icon: 'icon-bell',
-                title: 'Đơn hàng mới',
-                message: 'Bạn có 1 đơn hàng mới từ' + data.order.name,
-            }, {
-                type: 'secondary',
-                placement: {
-                    from: "bottom",
-                    align: "right"
-                },
-                time: 3000,
-            });
-            const data2 = {
-                message: "Bạn có một đơn hàng mới từ " + data.order.name,
-                order_id: data.order.id
-            };
+        //     $.notify({
+        //         icon: 'icon-bell',
+        //         title: 'Đơn hàng mới',
+        //         message: 'Bạn có 1 đơn hàng mới từ' + data.order.name,
+        //     }, {
+        //         type: 'secondary',
+        //         placement: {
+        //             from: "bottom",
+        //             align: "right"
+        //         },
+        //         time: 3000,
+        //     });
+        //     const data2 = {
+        //         message: "Bạn có một đơn hàng mới từ " + data.order.name,
+        //         order_id: data.order.id
+        //     };
 
-            axios.post('/admin/notifications', data2)
-                .then(response => {
-                    console.log('Thông báo đã được thêm:', response);
-                    // Có thể reload bảng thông báo hoặc làm gì đó sau khi thêm thông báo
-                    // loadNotifications(); // Hàm load lại thông báo
+        //     axios.post('/admin/notifications', data2)
+        //         .then(response => {
+        //             console.log('Thông báo đã được thêm:', response);
+        //             // Có thể reload bảng thông báo hoặc làm gì đó sau khi thêm thông báo
+        //             // loadNotifications(); // Hàm load lại thông báo
 
-                })
-                .catch(error => {
-                    console.error('Lỗi khi thêm thông báo:', error);
-                });
+        //         })
+        //         .catch(error => {
+        //             console.error('Lỗi khi thêm thông báo:', error);
+        //         });
 
 
-        });
+        // });
         $("#lineChart").sparkline([102, 109, 120, 99, 110, 105, 115], {
             type: "line",
             height: "70",
