@@ -90,7 +90,7 @@
         document.addEventListener("DOMContentLoaded", function() {
             let chatBox = document.getElementById("chat-box");
 
-            window.Echo.channel("conversation.{{ $conversation->id }}")
+            window.Echo.private("conversation.{{ $conversation->id }}")
                 .listen(".MessageCreated", (e) => {
                     let msg = e.message;
 
