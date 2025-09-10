@@ -91,7 +91,9 @@
             let chatBox = document.getElementById("chat-box");
 
             window.Echo.private("conversation.{{ $conversation->id }}")
-                .listen(".MessageCreated", (e) => {
+                .listen("MessageCreated", (e) => {
+                    console.log('MessageCreated');
+                    
                     let msg = e.message;
 
                     let div = document.createElement("div");

@@ -287,7 +287,7 @@ class ConversationController extends Controller
     public function zalo(Request $request)
     {
         // ✅ Luôn ép kiểu array hoặc log bằng JSON để tránh lỗi context null
-        Log::info('Zalo Webhook: ' . json_encode($request->all(), JSON_UNESCAPED_UNICODE));
+        // Log::info('Zalo Webhook: ' . json_encode($request->all(), JSON_UNESCAPED_UNICODE));
 
         $event = (string)$request->input('event_name');
 
@@ -362,6 +362,7 @@ class ConversationController extends Controller
             case 'user_send_text':
                 $text = $request->input('message.text');
                 $msg = $this->storeMessage($conversation, 'user', 'text', $text);
+                Log::info('$text' . $msg);
                 event(new MessageCreated($msg));
                 break;
 
@@ -535,6 +536,7 @@ class ConversationController extends Controller
             'message_type' => $msgType,
             'message_text' => $msgText,
             'sent_at'      => now(),
+            'conversation_id' => $conversation->id
         ]);
 
         $conversation->update([
