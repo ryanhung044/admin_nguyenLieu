@@ -20,7 +20,7 @@
             </thead>
             <tbody>
                 @forelse($conversations as $index => $conv)
-                    <tr>
+                    <tr data-id="{{ $conv->id }}">
                         <td>{{ $conversations->firstItem() + $index }}</td>
                         <td>{{ $conv->platform }}</td>
                         {{-- <td>{{ $conv->user->full_name ?? 'Ẩn danh' }}</td> --}}
@@ -29,13 +29,14 @@
                                 class="rounded-circle" width="40" height="40">
                             {{ $conv->user->name ?? 'Khách hàng' }}
                         </td>
-                        <td>{{ \Illuminate\Support\Str::limit($conv->last_message, 50) }}</td>
-                        <td>
-                            {{ $conv->last_time ? \Carbon\Carbon::parse($conv->last_time)->format('d/m/Y H:i') : '' }}
+                        <td class="last-message">{{ \Illuminate\Support\Str::limit($conv->last_message, 50) }}</td>
+                        <td class="last-time">
+                            {{ $conv->last_time ? \Carbon\Carbon::parse($conv->last_time)->format('H:i d/m/Y') : '' }}
                         </td>
+
                         <td>
                             <a href="{{ route('admin.conversations.show', $conv->id) }}" class="btn btn-sm btn-primary">
-                                Xem chi tiết
+                                <i class="fa-solid fa-message"></i>
                             </a>
                         </td>
                     </tr>
@@ -51,4 +52,66 @@
             {{ $conversations->links('pagination::bootstrap-5') }}
         </div>
     </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const tbody = document.querySelector('table tbody');
+
+            window.Echo.channel('conversations')
+                .listen('.MessageCreated', (e) => {
+                    const msg = e.message;
+                    if (!msg) return;
+
+                    let row = document.querySelector(`tr[data-id='${msg.conversation_id}']`);
+
+                    if (!row) {
+                        // Tạo mới row
+                        row = document.createElement('tr');
+                        row.dataset.id = msg.conversation_id;
+
+                        row.innerHTML = `
+                    <td>#</td>
+                    <td>${msg.conversation?.platform ?? 'N/A'}</td>
+                    <td>
+                        <img src="${msg.conversation?.user?.avatar ?? '/images/default-avatar.png'}" class="rounded-circle" width="40" height="40">
+                        ${msg.conversation?.user?.name ?? 'Khách hàng'}
+                    </td>
+                    <td class="last-message">${msg.message_text?.length > 50 ? msg.message_text.substr(0,50) + '...' : msg.message_text ?? '[Không xác định]'}</td>
+                    <td class="last-time">${msg.sent_at ? new Date(msg.sent_at).toLocaleString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : ''}</td>
+                    <td>
+                        <a href="/admin/conversations/${msg.conversation_id}" class="btn btn-sm btn-primary">
+                                <i class="fa-solid fa-message"></i>
+                        </a>
+                    </td>
+                `;
+
+                        tbody.prepend(row);
+                    } else {
+                        // Cập nhật tin nhắn cuối + thời gian
+                        const lastMsgTd = row.querySelector('.last-message');
+                        if (lastMsgTd) lastMsgTd.textContent = msg.message_text?.length > 50 ? msg.message_text
+                            .substr(0, 50) + '...' : msg.message_text ?? '[Không xác định]';
+
+                        const lastTimeTd = row.querySelector('.last-time');
+                        if (lastTimeTd) {
+                            const sentAt = msg.sent_at ? new Date(msg.sent_at) : new Date();
+                            lastTimeTd.textContent = sentAt.toLocaleString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+                        }
+                    }
+
+                    row.classList.add('table-warning');
+                    setTimeout(() => row.classList.remove('table-warning'), 2000);
+                });
+        });
+    </script>
+
+
+
+
 @endsection

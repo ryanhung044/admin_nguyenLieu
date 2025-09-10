@@ -78,16 +78,7 @@
         </div>
     </div>
 
-    <script>
-        window.Pusher = Pusher;
 
-        window.Echo = new Echo({
-            broadcaster: 'pusher',
-            key: '{{ env('PUSHER_APP_KEY') }}',
-            cluster: '{{ env('PUSHER_APP_CLUSTER') }}',
-            forceTLS: true
-        });
-    </script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             let chatBox = document.getElementById("chat-box");

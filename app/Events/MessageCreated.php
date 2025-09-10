@@ -89,8 +89,9 @@ class MessageCreated implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            "conversation.{$this->conversationId}"
+            "conversation.{$this->conversationId}",
+            'conversations', // channel công khai
         ];
     }
+    
 }
-
