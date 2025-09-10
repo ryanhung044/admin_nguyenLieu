@@ -27,10 +27,11 @@
                                 class="rounded-circle" width="40" height="40">
                             {{ $conv->user->name ?? 'Khách hàng' }}
                         </td>
-                        <td class="last-message">{{ \Illuminate\Support\Str::limit($conv->last_message, 50) }}
+                        <td class="last-message">
                             @if ($conv->unread_count > 0)
-                                <span class="badge bg-danger ms-1">{{ $conv->unread_count }}</span>
+                            <span class="badge bg-danger ms-1">{{ $conv->unread_count }}</span>
                             @endif
+                            {{ \Illuminate\Support\Str::limit($conv->last_message, 50) }}
                         </td>
                         <td class="last-time">
                             {{ $conv->last_time ? \Carbon\Carbon::parse($conv->last_time)->format('H:i d/m/Y') : '' }}
@@ -80,8 +81,8 @@
                         ${msg.conversation?.user?.name ?? 'Khách hàng'}
                     </td>
                     <td class="last-message">
-                        ${msg.message_text?.length > 50 ? msg.message_text.substr(0,50) + '...' : msg.message_text ?? '[Không xác định]'} 
                         ${unreadBadge}
+                        ${msg.message_text?.length > 50 ? msg.message_text.substr(0,50) + '...' : msg.message_text ?? '[Không xác định]'} 
                     </td>
                     <td class="last-time">${msg.sent_at ? new Date(msg.sent_at).toLocaleString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : ''}</td>
                     <td>
