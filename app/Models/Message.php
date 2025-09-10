@@ -10,7 +10,7 @@ class Message extends Model
     use HasFactory;
     protected $fillable = [
         'conversation_id', 'sender_type',
-        'message_type', 'message_text', 'message_data', 'sent_at'
+        'message_type', 'message_text', 'message_data', 'sent_at','admin_read_at','admin_read'
     ];
 
     protected $casts = [

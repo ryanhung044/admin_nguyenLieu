@@ -711,6 +711,10 @@ class ConversationController extends Controller
     public function index()
     {
         $conversations = Conversation::with('user') // load kèm thông tin khách hàng
+            ->withCount(['messages as unread_count' => function ($query) {
+                $query->whereNull('admin_read_at')->where('sender_type', '!=', 'admin'); // hoặc cột đánh dấu đã đọc
+                
+            }])
             ->orderByDesc('last_time')
             ->paginate(10);
         $conversations->getCollection()->transform(function ($conversation) {
@@ -732,6 +736,7 @@ class ConversationController extends Controller
      */
     public function show($id)
     {
+
         $conversation = Conversation::with('user')->findOrFail($id);
         if ($conversation->customer && $conversation->customer->avatar) {
             $avatar = $conversation->customer->avatar;
@@ -743,6 +748,12 @@ class ConversationController extends Controller
             ->with('user') // nếu muốn lấy cả thông tin người gửi
             ->orderBy('created_at', 'asc')
             ->get();
+        Message::where('conversation_id', $conversation->id)
+            ->where('admin_read', false)
+            ->update([
+                'admin_read' => true,
+                'admin_read_at' => now(),
+            ]);
 
         return view('admin.conversations.show', compact('conversation', 'messages'));
     }

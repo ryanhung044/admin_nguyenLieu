@@ -6,13 +6,12 @@
     <div>
         <h1 class="mb-4">Danh sách hội thoại</h1>
 
-        <table class="table table-bordered table-striped">
+        <table class="table table-bordered">
             <thead>
                 <tr>
                     <th>#</th>
                     <th>Nền tảng</th>
                     <th>Người dùng</th>
-                    {{-- <th>Hình ảnh</th> --}}
                     <th>Tin nhắn cuối</th>
                     <th>Thời gian cuối</th>
                     <th>Hành động</th>
@@ -23,13 +22,16 @@
                     <tr data-id="{{ $conv->id }}">
                         <td>{{ $conversations->firstItem() + $index }}</td>
                         <td>{{ $conv->platform }}</td>
-                        {{-- <td>{{ $conv->user->full_name ?? 'Ẩn danh' }}</td> --}}
                         <td>
                             <img src="{{ $conv->user->avatar ?? asset('images/default-avatar.png') }}" alt="avatar"
                                 class="rounded-circle" width="40" height="40">
                             {{ $conv->user->name ?? 'Khách hàng' }}
                         </td>
-                        <td class="last-message">{{ \Illuminate\Support\Str::limit($conv->last_message, 50) }}</td>
+                        <td class="last-message">{{ \Illuminate\Support\Str::limit($conv->last_message, 50) }}
+                            @if ($conv->unread_count > 0)
+                                <span class="badge bg-danger ms-1">{{ $conv->unread_count }}</span>
+                            @endif
+                        </td>
                         <td class="last-time">
                             {{ $conv->last_time ? \Carbon\Carbon::parse($conv->last_time)->format('H:i d/m/Y') : '' }}
                         </td>
@@ -65,9 +67,10 @@
                     let row = document.querySelector(`tr[data-id='${msg.conversation_id}']`);
 
                     if (!row) {
-                        // Tạo mới row
                         row = document.createElement('tr');
                         row.dataset.id = msg.conversation_id;
+                        const unreadBadge = msg.sender_type !== 'admin' ?
+                            `<span class="badge bg-danger ms-1">1</span>` : '';
 
                         row.innerHTML = `
                     <td>#</td>
@@ -76,7 +79,10 @@
                         <img src="${msg.conversation?.user?.avatar ?? '/images/default-avatar.png'}" class="rounded-circle" width="40" height="40">
                         ${msg.conversation?.user?.name ?? 'Khách hàng'}
                     </td>
-                    <td class="last-message">${msg.message_text?.length > 50 ? msg.message_text.substr(0,50) + '...' : msg.message_text ?? '[Không xác định]'}</td>
+                    <td class="last-message">
+                        ${msg.message_text?.length > 50 ? msg.message_text.substr(0,50) + '...' : msg.message_text ?? '[Không xác định]'} 
+                        ${unreadBadge}
+                    </td>
                     <td class="last-time">${msg.sent_at ? new Date(msg.sent_at).toLocaleString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : ''}</td>
                     <td>
                         <a href="/admin/conversations/${msg.conversation_id}" class="btn btn-sm btn-primary">
@@ -87,10 +93,19 @@
 
                         tbody.prepend(row);
                     } else {
-                        // Cập nhật tin nhắn cuối + thời gian
                         const lastMsgTd = row.querySelector('.last-message');
-                        if (lastMsgTd) lastMsgTd.textContent = msg.message_text?.length > 50 ? msg.message_text
-                            .substr(0, 50) + '...' : msg.message_text ?? '[Không xác định]';
+                        if (lastMsgTd) {
+                            let badgeHTML = '';
+                            if (msg.sender_type !== 'admin') {
+                                const oldCount = parseInt(lastMsgTd.querySelector('.badge')?.textContent || 0);
+                                badgeHTML = `<span class="badge bg-danger ms-1">${oldCount + 1}</span>`;
+                            }
+
+                            lastMsgTd.innerHTML = `
+                        ${msg.message_text?.length > 50 ? msg.message_text.substr(0,50) + '...' : msg.message_text ?? '[Không xác định]'}
+                        ${badgeHTML}
+                    `;
+                        }
 
                         const lastTimeTd = row.querySelector('.last-time');
                         if (lastTimeTd) {

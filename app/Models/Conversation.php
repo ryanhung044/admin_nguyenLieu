@@ -25,4 +25,10 @@ class Conversation extends Model
     {
         return $this->belongsTo(User::class, 'external_id', 'zalo_id');
     }
+
+    public function unreadMessagesCount()
+    {
+        // Giả sử 'read_at' lưu thời điểm đọc của admin
+        return $this->messages()->whereNull('admin_read_at')->count();
+    }
 }

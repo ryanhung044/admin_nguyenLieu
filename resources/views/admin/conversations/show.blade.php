@@ -3,31 +3,15 @@
 @section('content')
     <div class="row">
         <!-- Cột bên trái: Thông tin hội thoại -->
-        <div class="col-md-4 border-end">
-            <h4 class="mb-3">Thông tin hội thoại</h4>
-            <p><strong>Platform:</strong>
-                <span class="badge bg-{{ $conversation->platform == 'zalo' ? 'info' : 'primary' }}">
-                    {{ ucfirst($conversation->platform) }}
-                </span>
-            </p>
 
-            <h4><img src="{{ $conversation->user->avatar ?? asset('images/default-avatar.png') }}" alt="avatar"
-                    class="rounded-circle" width="50" height="50"> {{ $conversation?->user?->name }}</h4>
-            {{-- <h5>Email: {{ $conversation?->user?->email }}</h5> --}}
-            <p><strong>Thời gian:</strong>
-                {{ $conversation->last_time ? \Carbon\Carbon::parse($conversation->last_time)->format('d/m/Y H:i') : '' }}
-            </p>
-
-            <a href="{{ route('admin.conversations.index') }}" class="btn btn-secondary btn-sm">
-                ← Quay lại danh sách
-            </a>
-        </div>
 
         <!-- Cột bên phải: Khung chat -->
         <div class="col-md-8">
             <div class="card" style="height: 80vh">
                 <div class="card-header">
-                    <h5 class="mb-0">Hội thoại với {{ $conversation?->user?->full_name }}</h5>
+                    <h5 class="mb-0"><img src="{{ $conversation->user->avatar ?? asset('images/default-avatar.png') }}"
+                            alt="avatar" class="rounded-circle" width="50" height="50">
+                        {{ $conversation?->user?->full_name }}</h5>
                 </div>
                 <div id="chat-box" class="card-body" style="height: 500px; overflow-y: auto; background: #f9f9f9;">
                     @foreach ($messages as $msg)
@@ -47,7 +31,8 @@
                                 @if ($msg->message_type === 'text')
                                     <div>{{ $msg->message_text }}</div>
                                 @elseif ($msg->message_type === 'image')
-                                    <div><img src="{{ $msg->message_text }}" alt="image" class="img-fluid rounded"></div>
+                                    <div><img style="max-width: 200px" src="{{ $msg->message_text }}" alt="image"
+                                            class="img-fluid rounded"></div>
                                 @elseif ($msg->message_type === 'sticker')
                                     <div>[Sticker ID: {{ $msg->message_text }}]</div>
                                 @elseif ($msg->message_type === 'event')
@@ -75,6 +60,25 @@
                     </form>
                 </div>
             </div>
+        </div>
+        <div class="col-md-4 border-end">
+            <h4 class="mb-3">Thông tin hội thoại</h4>
+            <p><strong>Platform:</strong>
+                <span class="badge bg-{{ $conversation->platform == 'zalo' ? 'info' : 'primary' }}">
+                    {{ ucfirst($conversation->platform) }}
+                </span>
+            </p>
+
+            <h4><img src="{{ $conversation->user->avatar ?? asset('images/default-avatar.png') }}" alt="avatar"
+                    class="rounded-circle" width="50" height="50"> {{ $conversation?->user?->name }}</h4>
+            {{-- <h5>Email: {{ $conversation?->user?->email }}</h5> --}}
+            <p><strong>Thời gian:</strong>
+                {{ $conversation->last_time ? \Carbon\Carbon::parse($conversation->last_time)->format('d/m/Y H:i') : '' }}
+            </p>
+
+            <a href="{{ route('admin.conversations.index') }}" class="btn btn-secondary btn-sm">
+                ← Quay lại danh sách
+            </a>
         </div>
     </div>
 
@@ -106,7 +110,7 @@
                             break;
                         case 'image':
                             contentHtml =
-                                `<div><img src="${msg.message_text}" alt="image" class="img-fluid rounded"></div>`;
+                                `<div><img style="max-width: 200px" src="${msg.message_text}" alt="image" class="img-fluid rounded"></div>`;
                             break;
                         case 'sticker':
                             contentHtml = `<div>[Sticker ID: ${msg.message_text}]</div>`;

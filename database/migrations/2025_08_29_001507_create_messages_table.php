@@ -19,6 +19,8 @@ return new class extends Migration
             $table->text('message_text')->nullable();
             $table->json('message_data')->nullable(); // chứa URL/file_id nếu ảnh/file
             $table->timestamp('sent_at')->nullable();
+            $table->boolean('admin_read')->default(false); // true nếu admin đã xem
+            $table->timestamp('admin_read_at')->nullable(); // thời gian admin đọc
             $table->timestamps();
         });
     }
