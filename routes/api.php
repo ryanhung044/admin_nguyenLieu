@@ -64,6 +64,7 @@ Route::get('/vouchers', [VoucherApiController::class, 'index']);
 Route::get('/vouchers/{code}', [VoucherApiController::class, 'show']);
 Route::post('/spin', [RewardApiController::class, 'spin']);
 Route::get('/rewards', [RewardApiController::class, 'getRewards']);
+Route::post('/conversations/{id}/messages', [ConversationController::class, 'sendMessage']);
 
 // routes/web.php
 Route::get('/image-proxy', function (Request $request) {

@@ -10,6 +10,7 @@ use App\Models\Message;
 use App\Models\User;
 use App\Models\ZaloToken;
 use Carbon\Carbon;
+use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -713,7 +714,7 @@ class ConversationController extends Controller
         $conversations = Conversation::with('user') // load kèm thông tin khách hàng
             ->withCount(['messages as unread_count' => function ($query) {
                 $query->whereNull('admin_read_at')->where('sender_type', '!=', 'admin'); // hoặc cột đánh dấu đã đọc
-                
+
             }])
             ->orderByDesc('last_time')
             ->paginate(10);
@@ -759,34 +760,54 @@ class ConversationController extends Controller
     }
 
 
-    public function sendMessage(Request $request, $id)
+    // public function sendMessage(Request $request, $id)
+    // {
+    //     $conversation = Conversation::findOrFail($id);
+
+    //     $request->validate([
+    //         'type' => 'required|string|in:text,image,file,video,sticker',
+    //         'content' => 'required'
+    //     ]);
+    //     $this->sendMessageToUser($conversation->user_id, $request->type, $request->content);
+    //     // $this->sendMessageToUser($conversation->external_id,, $request->content);
+
+
+    //     // // 3. Lưu DB
+    //     // $conversation->messages()->create([
+    //     //     'sender_type'   => 'admin',
+    //     //     'message_type'  => 'text',
+    //     //     'message_text'  => $request->content,
+    //     //     'sent_at'       => now(),
+    //     // ]);
+
+    //     // $conversation->update([
+    //     //     'last_message' => $request->content,
+    //     //     'last_time'    => now(),
+    //     // ]);
+
+    //     return redirect()
+    //         ->route('admin.conversations.show', $conversation->id)
+    //         ->with('success', 'Tin nhắn đã được gửi thành công.');
+    // }
+
+    public function sendMessage(Request $request, $conversationId)
     {
-        $conversation = Conversation::findOrFail($id);
+        $conversation = Conversation::findOrFail($conversationId);
+        $type = $request->input('type');
+        $content = $request->file('content') ?? $request->input('content');
 
-        $request->validate([
-            'content' => 'required|string|max:1000',
-        ]);
+        if ($request->hasFile('content')) {
+            // upload file lên server hoặc lấy URL public
+            $path = $request->file('content')->store('uploads', 'public');
+            $content = asset('storage/' . $path);
+        }
 
-        $this->sendMessageToUser($conversation->external_id, $request->content);
+        // gọi hàm gửi message lên Zalo
+        $res = $this->sendMessageToUser($conversation->external_id, $type, $content);
 
-
-        // // 3. Lưu DB
-        // $conversation->messages()->create([
-        //     'sender_type'   => 'admin',
-        //     'message_type'  => 'text',
-        //     'message_text'  => $request->content,
-        //     'sent_at'       => now(),
-        // ]);
-
-        // $conversation->update([
-        //     'last_message' => $request->content,
-        //     'last_time'    => now(),
-        // ]);
-
-        return redirect()
-            ->route('admin.conversations.show', $conversation->id)
-            ->with('success', 'Tin nhắn đã được gửi thành công.');
+        return response()->json(['success' => true, 'data' => $res]);
     }
+
 
     public function zaloCallback(Request $request)
     {
@@ -823,7 +844,7 @@ class ConversationController extends Controller
     private function getZaloAccessToken(): ?string
     {
         // Lấy token mới nhất trong DB
-        $token = ZaloToken::latest()->first();
+        $token = ZaloToken::orderBy('expired_at', 'desc')->first();
 
         // Nếu token còn hạn dùng thì xài luôn
         if ($token && $token->expired_at && now()->lt($token->expired_at)) {
@@ -877,19 +898,113 @@ class ConversationController extends Controller
     }
 
 
-    private function sendMessageToUser($userId, string $message)
+    // private function sendMessageToUser($userId, string $message)
+    // {
+    //     $accessToken = $this->getZaloAccessToken();
+    //     $url = "https://openapi.zalo.me/v3.0/oa/message/cs";
+
+    //     $payload = [
+    //         "recipient" => [
+    //             "user_id" => $userId
+    //         ],
+    //         "message" => [
+    //             "text" => $message
+    //         ]
+    //     ];
+
+    //     $client = new \GuzzleHttp\Client();
+
+    //     try {
+    //         $response = $client->post($url, [
+    //             'headers' => [
+    //                 'Content-Type' => 'application/json',
+    //                 'access_token' => $accessToken, // ✅ Đặt access_token trong header
+    //             ],
+    //             'json' => $payload,
+    //         ]);
+
+    //         $body = json_decode($response->getBody()->getContents(), true);
+    //         return $body;
+    //     } catch (\Exception $e) {
+    //         Log::error("Send message error: " . $e->getMessage());
+    //         return false;
+    //     }
+    // }
+    private function uploadFileToZalo($filePath, $type)
+    {
+        $accessToken = $this->getZaloAccessToken();
+        $url = 'https://openapi.zalo.me/v2.0/oa/upload/file';
+
+        $client = new \GuzzleHttp\Client();
+        $response = $client->post($url, [
+            'headers' => [
+                'access_token' => $accessToken
+            ],
+            'multipart' => [
+                [
+                    'name' => 'file',
+                    'contents' => fopen($filePath, 'r')
+                ],
+                [
+                    'name' => 'type',
+                    'contents' => $type // image/file/video
+                ]
+            ]
+        ]);
+
+        $body = json_decode($response->getBody()->getContents(), true);
+        if (!empty($body['data']['url'])) {
+            return $body['data']['url']; // URL public từ Zalo
+        }
+        throw new \Exception("Upload to Zalo failed: " . json_encode($body));
+    }
+
+    private function sendMessageToUser($userId, string $type, $content)
     {
         $accessToken = $this->getZaloAccessToken();
         $url = "https://openapi.zalo.me/v3.0/oa/message/cs";
+        $message = [];
+
+        if (in_array($type, ['image', 'file', 'video']) && $content instanceof \Illuminate\Http\UploadedFile) {
+            $filePath = $content->getRealPath();
+            $content = $this->uploadFileToZalo($filePath, $type); // lấy URL public từ Zalo
+        }
+
+        dd($content);
+        switch ($type) {
+            case 'text':
+                $message['text'] = $content; // string
+                break;
+
+            case 'image':
+            case 'file':
+            case 'video':
+                $message['attachment'] = [
+                    'type' => $type,
+                    'payload' => [
+                        'url' => $content // $content là URL public
+                    ]
+                ];
+                break;
+
+            case 'sticker':
+                $message['sticker'] = [
+                    'sticker_id' => $content // $content là ID sticker
+                ];
+                break;
+
+            default:
+                throw new \Exception("Loại tin nhắn không hợp lệ: $type");
+        }
 
         $payload = [
             "recipient" => [
                 "user_id" => $userId
             ],
-            "message" => [
-                "text" => $message
-            ]
+            "message" => $message
         ];
+
+
 
         $client = new \GuzzleHttp\Client();
 
@@ -897,18 +1012,19 @@ class ConversationController extends Controller
             $response = $client->post($url, [
                 'headers' => [
                     'Content-Type' => 'application/json',
-                    'access_token' => $accessToken, // ✅ Đặt access_token trong header
+                    'access_token' => $accessToken,
                 ],
                 'json' => $payload,
             ]);
 
-            $body = json_decode($response->getBody()->getContents(), true);
-            return $body;
+            return json_decode($response->getBody()->getContents(), true);
         } catch (\Exception $e) {
             Log::error("Send message error: " . $e->getMessage());
             return false;
         }
     }
+
+
 
     private function fetchRecentChatsFromZalo(int $offset = 0, int $count = 20): array
     {
