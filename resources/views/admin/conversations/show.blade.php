@@ -509,21 +509,21 @@
         </thead>
         <tbody>
             ${cart.map((item, i) => `
-                                                                                                                    <tr>
-                                                                                                                        <td>${item.name}</td>
-                                                                                                                        <td>${item.price.toLocaleString()} đ</td>
-                                                                                                                        <td>
-                                                                                                                            <input type="number" class="form-control form-control-sm update-qty" 
-                                                                                                                                   data-index="${i}" min="1" value="${item.quantity}">
-                                                                                                                        </td>
-                                                                                                                        <td>${(item.price * item.quantity).toLocaleString()} đ</td>
-                                                                                                                        <td>
-                                                                                                                            <button class="btn btn-danger btn-sm remove-item" data-index="${i}">
-                                                                                                                                Xóa
-                                                                                                                            </button>
-                                                                                                                        </td>
-                                                                                                                    </tr>
-                                                                                                                `).join('')}
+                                                                                                                            <tr>
+                                                                                                                                <td>${item.name}</td>
+                                                                                                                                <td>${item.price.toLocaleString()} đ</td>
+                                                                                                                                <td>
+                                                                                                                                    <input type="number" class="form-control form-control-sm update-qty" 
+                                                                                                                                           data-index="${i}" min="1" value="${item.quantity}">
+                                                                                                                                </td>
+                                                                                                                                <td>${(item.price * item.quantity).toLocaleString()} đ</td>
+                                                                                                                                <td>
+                                                                                                                                    <button class="btn btn-danger btn-sm remove-item" data-index="${i}">
+                                                                                                                                        Xóa
+                                                                                                                                    </button>
+                                                                                                                                </td>
+                                                                                                                            </tr>
+                                                                                                                        `).join('')}
         </tbody>
     `;
             container.appendChild(table);
@@ -664,20 +664,26 @@
                 let type = 'text';
                 let content = messageInput.value.trim();
 
+                // Nếu cả text lẫn file đều trống thì không gửi
+                if (!content && (!fileInput || !fileInput.files.length)) {
+                    return;
+                }
+
                 const formData = new FormData();
-                formData.append('type', type);
-                formData.append('content', content);
-                if (fileInput) {
+
+                if (fileInput && fileInput.files.length > 0) {
                     const file = fileInput.files[0];
-                    if (file) {
-    
-                        const mime = file.type;
-                        if (mime.startsWith('image/')) type = 'image';
-                        else if (mime.startsWith('video/')) type = 'video';
-                        else type = 'file';
-                        formData.set('type', type);
-                        formData.set('content', file);
-                    }
+                    const mime = file.type;
+
+                    if (mime.startsWith('image/')) type = 'image';
+                    else if (mime.startsWith('video/')) type = 'video';
+                    else type = 'file';
+
+                    formData.append('type', type);
+                    formData.append('content', file);
+                } else {
+                    formData.append('type', type);
+                    formData.append('content', content);
                 }
 
 
@@ -692,7 +698,7 @@
                 const data = await res.json();
                 if (data.success) {
                     messageInput.value = '';
-                    fileInput.value = '';
+                    if (fileInput) fileInput.value = '';
                 }
             });
 
