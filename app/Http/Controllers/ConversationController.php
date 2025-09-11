@@ -710,27 +710,69 @@ class ConversationController extends Controller
         return response()->json(['status' => 'ok']);
     }
 
+
     public function index()
     {
-        $conversations = Conversation::with('user') // load kèm thông tin khách hàng
-            ->withCount(['messages as unread_count' => function ($query) {
-                $query->whereNull('admin_read_at')->where('sender_type', '!=', 'admin'); // hoặc cột đánh dấu đã đọc
+        $users = User::whereNotNull('zalo_id')->get();
 
+        foreach ($users as $user) {
+            Conversation::firstOrCreate(
+                ['user_id' => $user->zalo_id], // điều kiện kiểm tra tồn tại
+                [
+                    'platform'     => 'zalo',
+                    'external_id'  => $user->zalo_id,
+                    'last_time'    => now(),
+                ]
+            );
+        }
+        // Lấy danh sách hội thoại có sẵn
+        $conversations = Conversation::with('user')
+            ->withCount(['messages as unread_count' => function ($query) {
+                $query->whereNull('admin_read_at')
+                    ->where('sender_type', '!=', 'admin');
             }])
             ->orderByDesc('last_time')
             ->paginate(20);
+
+        // ✅ Tạo thêm hội thoại nếu có user chưa có
+
+
+        // Xử lý avatar
         $conversations->getCollection()->transform(function ($conversation) {
             if ($conversation->customer && $conversation->customer->avatar) {
                 $avatar = $conversation->customer->avatar;
-                // nếu avatar bắt đầu bằng https thì giữ nguyên, còn không thì thêm storage path
                 $conversation->customer->avatar_url = str_starts_with($avatar, 'http')
                     ? $avatar
                     : asset('storage/' . $avatar);
             }
             return $conversation;
         });
+
         return view('admin.conversations.index', compact('conversations'));
     }
+
+
+    // public function index()
+    // {
+    //     $conversations = Conversation::with('user') // load kèm thông tin khách hàng
+    //         ->withCount(['messages as unread_count' => function ($query) {
+    //             $query->whereNull('admin_read_at')->where('sender_type', '!=', 'admin'); // hoặc cột đánh dấu đã đọc
+
+    //         }])
+    //         ->orderByDesc('last_time')
+    //         ->paginate(20);
+    //     $conversations->getCollection()->transform(function ($conversation) {
+    //         if ($conversation->customer && $conversation->customer->avatar) {
+    //             $avatar = $conversation->customer->avatar;
+    //             // nếu avatar bắt đầu bằng https thì giữ nguyên, còn không thì thêm storage path
+    //             $conversation->customer->avatar_url = str_starts_with($avatar, 'http')
+    //                 ? $avatar
+    //                 : asset('storage/' . $avatar);
+    //         }
+    //         return $conversation;
+    //     });
+    //     return view('admin.conversations.index', compact('conversations'));
+    // }
 
 
     /**
@@ -757,7 +799,7 @@ class ConversationController extends Controller
                 'admin_read_at' => now(),
             ]);
 
-        return view('admin.conversations.show', compact('conversation', 'messages','products'));
+        return view('admin.conversations.show', compact('conversation', 'messages', 'products'));
     }
 
 
