@@ -766,6 +766,7 @@
             overflow-y: auto;
             background: #f9f9f9;
             min-height: 500px;
+            max-height: 500px;
             /* hoặc 400px */
         }
 

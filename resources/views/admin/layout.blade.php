@@ -113,6 +113,10 @@
                             <h4 class="text-section">Cửa hàng</h4>
                         </li>
                         <li class="nav-item">
+                            <a href="{{ route('admin.conversations.index') }}">
+                                <i class="fa-solid fa-envelope"></i>
+                                <p>Liên hệ</p>
+                            </a>
                             <a href="{{ route('admin.app-setting.index') }}">
                                 <i class="fas fa-info-circle"></i>
                                 <p>Thông tin ứng dụng</p>
@@ -138,6 +142,18 @@
                                 <p>Yêu cầu rút tiền</p>
                             </a>
 
+                        </li>
+                        <li class="nav-section">
+                            <span class="sidebar-mini-icon">
+                                <i class="fa fa-ellipsis-h"></i>
+                            </span>
+                            <h4 class="text-section">Đơn hàng</h4>
+                        </li>
+                        <li class="nav-item">
+                            <a href="{{ route('admin.orders.index') }}">
+                                <i class="fas fa-box"></i>
+                                <p>Quản lý đơn hàng</p>
+                            </a>
                         </li>
                         <li class="nav-section">
                             <span class="sidebar-mini-icon">
@@ -246,55 +262,9 @@
                             </div>
                         </li>
 
-                        <li class="nav-section">
-                            <span class="sidebar-mini-icon">
-                                <i class="fa fa-ellipsis-h"></i>
-                            </span>
-                            <h4 class="text-section">Đơn hàng</h4>
-                        </li>
-                        <li class="nav-item">
-                            <a href="{{ route('admin.orders.index') }}">
-                                <i class="fas fa-box"></i>
-                                <p>Quản lý đơn hàng</p>
-                                {{-- <span class="caret"></span> --}}
-                            </a>
-                            {{-- <div class="collapse" id="orders">
-                                <ul class="nav nav-collapse">
-                                    <li>
-                                        <a href="{{ route('admin.orders.index') }}">
-                                            <span class="sub-item">Danh sách đơn hàng</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="{{ route('admin.orders.create') }}">
-                                            <span class="sub-item">Thêm mới đơn hàng</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div> --}}
-                        </li>
-                        <li class="nav-section">
-                            <span class="sidebar-mini-icon">
-                                <i class="fa fa-ellipsis-h"></i>
-                            </span>
-                            <h4 class="text-section">Tài khoản</h4>
-                        </li>
-                        <li class="nav-item">
-                            <a data-bs-toggle="collapse" href="#users">
-                                <i class="fas fa-users-cog"></i>
-                                <p>Quản lý tài khoản</p>
-                                <span class="caret"></span>
-                            </a>
-                            <div class="collapse" id="users">
-                                <ul class="nav nav-collapse">
-                                    <li>
-                                        <a href="{{ route('admin.users.index') }}">
-                                            <span class="sub-item">Danh sách tài khoản</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
+                        
+
+      
                         {{-- <li class="nav-section">
                             <span class="sidebar-mini-icon">
                                 <i class="fa fa-ellipsis-h"></i>
