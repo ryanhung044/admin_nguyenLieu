@@ -669,15 +669,15 @@
                 formData.append('content', content);
                 if (fileInput) {
                     const file = fileInput.files[0];
-                }
-                if (file) {
-
-                    const mime = file.type;
-                    if (mime.startsWith('image/')) type = 'image';
-                    else if (mime.startsWith('video/')) type = 'video';
-                    else type = 'file';
-                    formData.set('type', type);
-                    formData.set('content', file);
+                    if (file) {
+    
+                        const mime = file.type;
+                        if (mime.startsWith('image/')) type = 'image';
+                        else if (mime.startsWith('video/')) type = 'video';
+                        else type = 'file';
+                        formData.set('type', type);
+                        formData.set('content', file);
+                    }
                 }
 
 
