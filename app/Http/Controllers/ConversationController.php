@@ -721,13 +721,7 @@ class ConversationController extends Controller
                 ->first();
 
             if ($conversation) {
-                // Update
-                $conversation->update([
-                    'platform'    => 'zalo',
-                    'external_id' => $user->zalo_id,
-                    'last_time'   => now(),
-                ]);
-            } else {
+             } else {
                 // Create
                 $conversation = Conversation::create([
                     'user_id'     => $user->zalo_id,
