@@ -716,14 +716,26 @@ class ConversationController extends Controller
         $users = User::whereNotNull('zalo_id')->get();
 
         foreach ($users as $user) {
-            Conversation::firstOrCreate(
-                ['user_id' => $user->zalo_id], // điều kiện kiểm tra tồn tại
-                [
-                    'platform'     => 'zalo',
-                    'external_id'  => $user->zalo_id,
-                    'last_time'    => now(),
-                ]
-            );
+            $conversation = Conversation::where('user_id', $user->zalo_id)
+                ->orWhere('external_id', $user->zalo_id)
+                ->first();
+
+            if ($conversation) {
+                // Update
+                $conversation->update([
+                    'platform'    => 'zalo',
+                    'external_id' => $user->zalo_id,
+                    'last_time'   => now(),
+                ]);
+            } else {
+                // Create
+                $conversation = Conversation::create([
+                    'user_id'     => $user->zalo_id,
+                    'platform'    => 'zalo',
+                    'external_id' => $user->zalo_id,
+                    'last_time'   => now(),
+                ]);
+            }
         }
         // Lấy danh sách hội thoại có sẵn
         $conversations = Conversation::with('user')
