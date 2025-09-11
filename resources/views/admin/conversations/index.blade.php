@@ -5,54 +5,55 @@
 @section('content')
     <div>
         <h1 class="mb-4">Danh sách hội thoại</h1>
-
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Nền tảng</th>
-                    <th>Người dùng</th>
-                    <th>Tin nhắn cuối</th>
-                    <th>Thời gian cuối</th>
-                    <th>Hành động</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($conversations as $index => $conv)
-                    <tr data-id="{{ $conv->id }}">
-                        <td>{{ $conversations->firstItem() + $index }}</td>
-                        <td>{{ $conv->platform }}</td>
-                        <td>
-                            <img src="{{ $conv->user->avatar ?? asset('images/default-avatar.png') }}" alt="avatar"
-                                class="rounded-circle" width="40" height="40">
-                            {{ $conv->user->name ?? 'Khách hàng' }}
-                        </td>
-                        <td class="last-message">
-                            @if ($conv->unread_count > 0)
-                            <span class="badge bg-danger ms-1">{{ $conv->unread_count }}</span>
-                            @endif
-                            {{ \Illuminate\Support\Str::limit($conv->last_message, 50) }}
-                        </td>
-                        <td class="last-time">
-                            {{ $conv->last_time ? \Carbon\Carbon::parse($conv->last_time)->format('H:i d/m/Y') : '' }}
-                        </td>
-
-                        <td>
-                            <a href="{{ route('admin.conversations.show', $conv->id) }}" class="btn btn-sm btn-primary">
-                                <i class="fa-solid fa-message"></i>
-                            </a>
-                        </td>
-                    </tr>
-                @empty
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
                     <tr>
-                        <td colspan="7" class="text-center">Không có hội thoại nào</td>
+                        <th>#</th>
+                        <th>Nền tảng</th>
+                        <th>Người dùng</th>
+                        <th>Tin nhắn cuối</th>
+                        <th>Thời gian cuối</th>
+                        <th>Hành động</th>
                     </tr>
-                @endforelse
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @forelse($conversations as $index => $conv)
+                        <tr data-id="{{ $conv->id }}">
+                            <td>{{ $conversations->firstItem() + $index }}</td>
+                            <td>{{ $conv->platform }}</td>
+                            <td>
+                                <img src="{{ $conv->user->avatar ?? asset('images/default-avatar.png') }}" alt="avatar"
+                                    class="rounded-circle" width="40" height="40">
+                                {{ $conv->user->name ?? 'Khách hàng' }}
+                            </td>
+                            <td class="last-message">
+                                @if ($conv->unread_count > 0)
+                                    <span class="badge bg-danger ms-1">{{ $conv->unread_count }}</span>
+                                @endif
+                                {{ \Illuminate\Support\Str::limit($conv->last_message, 50) }}
+                            </td>
+                            <td class="last-time">
+                                {{ $conv->last_time ? \Carbon\Carbon::parse($conv->last_time)->format('H:i d/m/Y') : '' }}
+                            </td>
 
-        <div>
-            {{ $conversations->links('pagination::bootstrap-5') }}
+                            <td>
+                                <a href="{{ route('admin.conversations.show', $conv->id) }}" class="btn btn-sm btn-primary">
+                                    <i class="fa-solid fa-message"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="text-center">Không có hội thoại nào</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+
+            <div>
+                {{ $conversations->links('pagination::bootstrap-5') }}
+            </div>
         </div>
     </div>
 

@@ -2,6 +2,7 @@
 
 use App\Exports\OrdersExport;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\AppSettingController;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\AttributeController;
@@ -101,6 +102,7 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('messages', [MessageController::class, 'index'])->name('messages.index');
         Route::post('messages', [MessageController::class, 'store'])->name('messages.store');
         Route::post('/conversations/{id}/messages', [ConversationController::class, 'sendMessage']);
+
     });
     Route::post('/products/upload', [ProductController::class, 'upload'])->name('upload');
     Route::put('/admin/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('admin.orders.updateStatus');

@@ -918,6 +918,34 @@ class ClientController extends Controller
                 $user = $accessToken->tokenable;
             }
         }
+        if ($request->filled('user_id')) {
+            $user = User::findOrFail($request->input('user_id'));
+        }
+        if ($user) {
+            $updateData = [];
+
+            // Chỉ update nếu user chưa có phone
+            if (empty($user->phone)) {
+                // Kiểm tra xem phone đã tồn tại ở user khác chưa
+                $existsPhone = User::where('phone', $validated['phone'])
+                    ->where('id', '<>', $user->id)
+                    ->exists();
+
+                if (!$existsPhone) {
+                    $updateData['phone'] = $validated['phone'];
+                }
+            }
+
+            // Chỉ update nếu user chưa có address
+            if (empty($user->address)) {
+                $updateData['address'] = $validated['address'];
+            }
+
+            if (!empty($updateData)) {
+                $user->update($updateData);
+            }
+        }
+
         // return $user;
         DB::beginTransaction();
 
@@ -2226,7 +2254,7 @@ class ClientController extends Controller
             return response()->json(['message' => 'Thiếu access_token hoặc code'], 400);
         }
 
-        $appsecret_proof= hash_hmac('sha256', $accessToken, env('ZALO_SECRET_KEY')); 
+        $appsecret_proof = hash_hmac('sha256', $accessToken, env('ZALO_SECRET_KEY'));
 
         $response = Http::withHeaders([
             'access_token' => $accessToken,
@@ -2245,44 +2273,44 @@ class ClientController extends Controller
         ], $response->status());
     }
 
-//     public function getZaloUserInfo(Request $request)
-// {
-//     $accessToken = $request->input('access_token');
-//     $code = $request->input('code');
+    //     public function getZaloUserInfo(Request $request)
+    // {
+    //     $accessToken = $request->input('access_token');
+    //     $code = $request->input('code');
 
-//     if (!$accessToken || !$code) {
-//         return response()->json(['message' => 'Thiếu access_token hoặc code'], 400);
-//     }
+    //     if (!$accessToken || !$code) {
+    //         return response()->json(['message' => 'Thiếu access_token hoặc code'], 400);
+    //     }
 
-//     $appSecret = env('ZALO_SECRET_KEY');
-//     $appsecret_proof = hash_hmac('sha256', $accessToken, $appSecret);
+    //     $appSecret = env('ZALO_SECRET_KEY');
+    //     $appsecret_proof = hash_hmac('sha256', $accessToken, $appSecret);
 
-//     // Gọi API thông tin người dùng
-//     $userInfoRes = Http::get('https://graph.zalo.me/v2.0/me', [
-//         'access_token' => $accessToken,
-//         'appsecret_proof' => $appsecret_proof,
-//     ]);
+    //     // Gọi API thông tin người dùng
+    //     $userInfoRes = Http::get('https://graph.zalo.me/v2.0/me', [
+    //         'access_token' => $accessToken,
+    //         'appsecret_proof' => $appsecret_proof,
+    //     ]);
 
-//     // Gọi API thông tin số điện thoại
-//     $phoneInfoRes = Http::get('https://graph.zalo.me/v2.0/me/phone', [
-//         'access_token' => $accessToken,
-//         'appsecret_proof' => $appsecret_proof,
-//         'code' => $code,
-//     ]);
+    //     // Gọi API thông tin số điện thoại
+    //     $phoneInfoRes = Http::get('https://graph.zalo.me/v2.0/me/phone', [
+    //         'access_token' => $accessToken,
+    //         'appsecret_proof' => $appsecret_proof,
+    //         'code' => $code,
+    //     ]);
 
-//     if ($userInfoRes->successful() && $phoneInfoRes->successful()) {
-//         return response()->json([
-//             'user' => $userInfoRes->json(),
-//             'phone' => $phoneInfoRes->json(),
-//         ]);
-//     }
+    //     if ($userInfoRes->successful() && $phoneInfoRes->successful()) {
+    //         return response()->json([
+    //             'user' => $userInfoRes->json(),
+    //             'phone' => $phoneInfoRes->json(),
+    //         ]);
+    //     }
 
-//     return response()->json([
-//         'message' => 'Lỗi khi gọi Zalo API',
-//         'user_response' => $userInfoRes->body(),
-//         'phone_response' => $phoneInfoRes->body(),
-//     ], 400);
-// }
+    //     return response()->json([
+    //         'message' => 'Lỗi khi gọi Zalo API',
+    //         'user_response' => $userInfoRes->body(),
+    //         'phone_response' => $phoneInfoRes->body(),
+    //     ], 400);
+    // }
 
     public function sendMessage(Request $request)
     {
@@ -2394,6 +2422,10 @@ class ClientController extends Controller
             if ($accessToken) {
                 $user = $accessToken->tokenable;
             }
+        }
+
+        if($request->query('user_id')){
+             $user = User::findOrFail($request->input('user_id'));
         }
 
         // Nếu không có user thì trả lỗi 401

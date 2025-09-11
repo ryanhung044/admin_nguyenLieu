@@ -7,6 +7,7 @@ use App\Models\Conversation;
 use App\Http\Requests\StoreConversationRequest;
 use App\Http\Requests\UpdateConversationRequest;
 use App\Models\Message;
+use App\Models\Product;
 use App\Models\User;
 use App\Models\ZaloToken;
 use Carbon\Carbon;
@@ -717,7 +718,7 @@ class ConversationController extends Controller
 
             }])
             ->orderByDesc('last_time')
-            ->paginate(10);
+            ->paginate(20);
         $conversations->getCollection()->transform(function ($conversation) {
             if ($conversation->customer && $conversation->customer->avatar) {
                 $avatar = $conversation->customer->avatar;
@@ -737,7 +738,7 @@ class ConversationController extends Controller
      */
     public function show($id)
     {
-
+        $products = Product::with('variants.attributeValues')->get();
         $conversation = Conversation::with('user')->findOrFail($id);
         if ($conversation->customer && $conversation->customer->avatar) {
             $avatar = $conversation->customer->avatar;
@@ -756,7 +757,7 @@ class ConversationController extends Controller
                 'admin_read_at' => now(),
             ]);
 
-        return view('admin.conversations.show', compact('conversation', 'messages'));
+        return view('admin.conversations.show', compact('conversation', 'messages','products'));
     }
 
 
@@ -938,6 +939,9 @@ class ConversationController extends Controller
             case 'video':
                 $url = 'https://openapi.zalo.me/v2.0/oa/upload/video';
                 break;
+            case 'file':
+                $url = 'https://openapi.zalo.me/v2.0/oa/upload/file';
+                break;
             default: // file document
                 $url = 'https://openapi.zalo.me/v2.0/oa/upload/file';
         }
@@ -968,75 +972,89 @@ class ConversationController extends Controller
         ]);
 
         $body = json_decode($response->getBody()->getContents(), true);
-        return $body['data']['attachment_id'];
+
+        if (!empty($body['data']['attachment_id'])) {
+            return $body['data']['attachment_id'];
+        } elseif (!empty($body['data']['token'])) {
+            return $body['data']['token'];
+        } else {
+            throw new \Exception("Upload to Zalo failed: " . json_encode($body));
+        }
     }
 
 
 
 
-    private function sendMessageToUser($userId, string $type, $content, $text = '')
-{
-    $accessToken = $this->getZaloAccessToken();
-    $client = new \GuzzleHttp\Client();
-
-    $message = [];
-
-    if (in_array($type, ['image', 'video'])) {
-        // Nếu $content là URL trực tiếp
-        $attachment = [
-            'type' => 'template',
-            'payload' => [
-                'template_type' => 'media',
-                'elements' => [
-                    [
-                        'media_type' => $type,
-                        'url' => $content
+    private function sendMessageToUser($userId, string $type, $content, $text = null)
+    {
+        $accessToken = $this->getZaloAccessToken();
+        $url = "https://openapi.zalo.me/v3.0/oa/message/cs";
+        $message = [];
+        if (in_array($type, ['image', 'video'])) {
+            // 1. Upload file lên Zalo trước để lấy attachment_id
+            $filePath = $content->getRealPath(); // $content là UploadedFile
+            $attachmentId = $this->uploadFileToZalo($filePath, $type);
+            // dd( $attachmentId );
+            // 2. Tạo template media với token
+            $attachment = [
+                'type' => 'template',
+                'payload' => [
+                    'template_type' => 'media',
+                    'elements' => [
+                        [
+                            'media_type' => $type,
+                            'attachment_id' => $attachmentId
+                        ]
                     ]
                 ]
-            ]
-        ];
-        $message['attachment'] = $attachment;
+            ];
 
-        if ($text) {
-            $message['text'] = $text; // text kèm media
+            $message['attachment'] = $attachment;
+
+            if ($text) {
+                $message['text'] = $text; // text kèm media
+            }
+        } else if ($type === 'text') {
+            $message['text'] = $content;
+        } else if ($type === 'sticker') {
+            $message['sticker'] = ['sticker_id' => $content];
+        } else if ($type === 'file') {
+            $filePath = $content->getRealPath();
+            $token = $this->uploadFileToZalo($filePath, 'file');
+            // dd($token);
+
+            $attachment = [
+                'type' => 'file',
+                'payload' => [
+                    'token' => $token
+                ]
+            ];
+
+            $message['attachment'] = $attachment;
+            if (!empty($text)) {
+                $message['text'] = $text;
+            }
+        } else {
+            throw new \Exception("Loại tin nhắn không hợp lệ: $type");
         }
-    } elseif (in_array($type, ['file', 'video_upload'])) {
-        // Nếu $content là file upload (UploadedFile)
-        $filePath = $content->getRealPath();
-        $attachmentId = $this->uploadFileToZalo($filePath, $type === 'video_upload' ? 'video' : 'file');
 
-        $message['attachment'] = [
-            'type' => $type === 'video_upload' ? 'video' : 'file',
-            'payload' => ['token' => $attachmentId]
+        $payload = [
+            "recipient" => ["user_id" => $userId],
+            "message" => $message
         ];
-    } elseif ($type === 'text') {
-        $message['text'] = $content;
-    } elseif ($type === 'sticker') {
-        $message['sticker'] = ['sticker_id' => $content];
-    } else {
-        throw new \Exception("Loại tin nhắn không hợp lệ: $type");
-    }
 
-    $body = [
-        'recipient' => ['user_id' => $userId],
-        'message' => $message
-    ];
-
-    try {
-        $response = $client->post('https://openapi.zalo.me/v3.0/oa/message/cs', [
+        $client = new \GuzzleHttp\Client();
+        $response = $client->post($url, [
             'headers' => [
                 'Content-Type' => 'application/json',
-                'access_token' => $accessToken
+                'access_token' => $accessToken,
             ],
-            'json' => $body
+            'json' => $payload
         ]);
 
         return json_decode($response->getBody()->getContents(), true);
-    } catch (\Exception $e) {
-        Log::error("Send message error: " . $e->getMessage());
-        return false;
     }
-}
+
 
 
 
