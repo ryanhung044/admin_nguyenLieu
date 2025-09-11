@@ -42,7 +42,7 @@ class ZaloController extends Controller
             'state' => $state
         ]);
 
-        dd($url);
+        // dd($url);
 
         return redirect($url);
     }
@@ -57,6 +57,8 @@ class ZaloController extends Controller
         if ($state !== session('zalo_state')) {
             return "State không hợp lệ";
         }
+
+        dd('ok');
 
         $codeVerifier = session('zalo_code_verifier');
 
