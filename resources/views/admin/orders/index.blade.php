@@ -1,7 +1,19 @@
 @extends('admin.layout')
 
 @section('content')
-    <h1 class="mb-4">Danh sách đơn hàng</h1>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="mb-4">Danh sách đơn hàng</h1>
+        <div class="d-flex justify-content-between gap-2 align-items-center mb-3">
+            <a class="btn btn-primary" href="{{ route('admin.orders.create') }}"> <i class="fas fa-plus-square"></i> Thêm mới đơn hàng</a>
+            <div>
+                <a href="{{ route('admin.orders.export', request()->query()) }}" class="btn btn-success">
+                    <i class="fas fa-file-excel"></i> Xuất Excel
+                </a>
+
+            </div>
+
+        </div>
+    </div>
     <div class="d-flex justify-content-between align-items-center mb-3" style="overflow: auto">
         <div class="btn-group" role="group" aria-label="Lọc theo trạng thái">
             @php
@@ -48,16 +60,8 @@
                 <input type="text" name="search" value="{{ request('search') }}" placeholder="Tìm kiếm đơn hàng..."
                     class="form-control" style="min-width:150px">
 
-                <button type="submit" class="btn btn-primary">Lọc</button>
+                <button type="submit" class="btn btn-primary d-flex justify-content-between gap-2 align-items-center"><i class="fas fa-search"></i> Lọc</button>
             </form>
-
-
-            <div>
-                <a href="{{ route('admin.orders.export', request()->query()) }}" class="btn btn-success">
-                    <i class="fas fa-file-excel"></i> Xuất Excel
-                </a>
-
-            </div>
 
         </div>
     </div>

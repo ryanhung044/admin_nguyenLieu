@@ -94,7 +94,9 @@ class OrderController extends Controller
      */
     public function create()
     {
-        //
+        $products = Product::with('variants.attributeValues')->get();
+
+        return view('admin.orders.create', compact('products'));
     }
 
     /**
