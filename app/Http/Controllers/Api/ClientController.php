@@ -1098,6 +1098,64 @@ class ClientController extends Controller
                 'voucher_code'   => $voucherCode,
             ]);
 
+            try {
+                $supershipResponse = Http::withHeaders([
+                    'Accept' => 'application/json',
+                    'Authorization' => 'Bearer ' . env('SUPERSHIP_API_KEY'),
+                    'Content-Type' => 'application/json',
+                ])->post('https://api.mysupership.vn/v1/partner/orders/add', [
+                    "pickup_phone"    => "0989999999",
+                    "pickup_address"  => "45 Nguyễn Chí Thanh",
+                    "pickup_commune"  => "Phường Ngọc Khánh",
+                    "pickup_district" => "Quận Ba Đình",
+                    "pickup_province" => "Thành phố Hà Nội",
+
+                    "name"     => $order->name,
+                    "phone"    => $order->phone,
+                    "address"  => $order->address,
+                    "province" => "Thành phố Hồ Chí Minh",
+                    "district" => "Quận 3",
+                    "commune"  => "Phường 6",
+
+                    "amount"  => $order->payment_method === 'cod' ? $order->total : 0,
+                    "value"   => $order->total,
+                    "weight"  => $order->items->sum(fn($i) => $i->quantity * 200), // tổng gram
+                    "payer"   => 1,   // 1 = người gửi trả phí
+                    "service" => 1,   // 1 = dịch vụ tiêu chuẩn
+                    "config"  => 1,
+                    "soc"     => "ORDER-" . $order->id,
+                    "note"    => "Giao giờ hành chính",
+                    "product_type" => 2,
+
+                    "products" => $order->items->map(function ($item) {
+                        return [
+                            "sku"      => "P" . $item->product_id,
+                            "name"     => $item->product_name,
+                            "price"    => $item->price,
+                            "weight"   => 200, // hoặc lấy từ bảng products
+                            "quantity" => $item->quantity,
+                        ];
+                    })->toArray(),
+                ]);
+
+
+                if ($supershipResponse->successful()) {
+                    $data = $supershipResponse->json();
+
+                    // Lưu mã vận đơn (tracking_code) vào DB để quản lý
+                    $order->update([
+                        'shipping_code' => $data['results']['code'] ?? null,
+                        'shipping_provider' => 'supership',
+                    ]);
+                } else {
+                    Log::error('Supership order failed', [
+                        'response' => $supershipResponse->body()
+                    ]);
+                }
+            } catch (\Exception $ex) {
+                Log::error('Supership API error: ' . $ex->getMessage());
+            }
+
             DB::commit();
             event(new NewOrderPlaced($order));
 
@@ -2424,8 +2482,8 @@ class ClientController extends Controller
             }
         }
 
-        if($request->query('user_id')){
-             $user = User::findOrFail($request->input('user_id'));
+        if ($request->query('user_id')) {
+            $user = User::findOrFail($request->input('user_id'));
         }
 
         // Nếu không có user thì trả lỗi 401

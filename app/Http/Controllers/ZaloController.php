@@ -50,6 +50,7 @@ class ZaloController extends Controller
     // Bước 2: Nhận callback từ Zalo
     public function handleCallback(Request $request)
     {
+        dd('ok');
         $state = $request->query('state');
         $code = $request->query('code');
 
@@ -58,7 +59,6 @@ class ZaloController extends Controller
             return "State không hợp lệ";
         }
 
-        dd('ok');
 
         $codeVerifier = session('zalo_code_verifier');
 

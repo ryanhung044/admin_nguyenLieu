@@ -1,86 +1,161 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <title>Hóa đơn đơn hàng #{{ $order->id }}</title>
-    <style>
-        body { font-family: Arial, sans-serif; width: 80mm; margin: 0 auto; font-size: 13px; }
-        h2, h3 { text-align: center; margin: 5px 0; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        td, th { padding: 4px 0; }
-        .bold { font-weight: bold; }
-        .divider { border-top: 1px dashed #000; margin: 5px 0; }
-        .signature { display: flex; justify-content: space-between; margin-top: 30px; }
-        .signature div { width: 45%; text-align: center; }
-        .print-btn { margin: 10px 0; text-align: center; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Hóa đơn #{{ $order->id }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 13px; margin: 20px; color: #000; }
+    .header { display: flex; justify-content: space-between; }
+    .shop-info { max-width: 60%; }
+    .shop-info h2 { margin: 0; font-size: 16px; }
+    .barcode { text-align: right; }
+    .barcode img { height: 60px; }
+    .order-id { font-weight: bold; margin-top: 5px; }
+    h3 { margin: 10px 0 5px; font-size: 14px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+    th, td { padding: 5px; border-bottom: 1px solid #ddd; font-size: 13px; }
+    th { text-align: left; background: #f9f9f9; }
+    .section { display: flex; gap: 15px; margin-top: 10px; }
+    .section > div { flex: 1; border: 1px solid #ddd; padding: 8px; border-radius: 3px; }
+    .total { font-weight: bold; font-size: 14px; }
+    .footer { font-size: 12px; margin-top: 15px; border-top: 1px solid #ddd; padding-top: 10px; }
+  </style>
 </head>
-<body>
-    <h2>ĐƠN HÀNG #{{ $order->id }}</h2>
-    <div class="center">{{ $order->created_at->format('Y/m/d H:i:s') }}</div>
+<body style="max-width: 800px; margin: auto; margin-top: 3rem; font-family: Arial, sans-serif; font-size: 14px; line-height: 1.5;">
+  <style>
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 2rem;
+    }
+    .shop-info h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+    .shop-info p {
+      margin: 4px 0;
+      line-height: 1.4;
+    }
+    .barcode {
+      text-align: right;
+    }
+    .barcode img {
+      height: 60px;
+      margin-bottom: 5px;
+    }
+    .order-id {
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .section {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 20px;
+      margin-bottom: 2rem;
+    }
+    h3 {
+      margin: 10px 0;
+      border-bottom: 1px solid #ddd;
+      padding-bottom: 5px;
+      font-size: 15px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      font-size: 13px;
+    }
+    th {
+      background: #f9f9f9;
+      text-align: left;
+    }
+    .total {
+      font-weight: bold;
+      font-size: 15px;
+      color: #000;
+      display: inline-block;
+      margin-top: 5px;
+    }
+    .footer {
+      border-top: 1px solid #ddd;
+      padding-top: 10px;
+      margin-top: 2rem;
+      font-size: 12px;
+      text-align: center;
+    }
+  </style>
 
-    <p><strong>CH: TINOTECH</strong><br>
-    (Thôn Lương Sơn, Đông Sơn, Chương Mỹ, Hà Nội)<br>
-    Điện thoại: 84398623059</p>
+  <div class="header">
+    <div class="shop-info">
+      <h2>Nguyên liệu đóng gói 228</h2>
+      <p>
+        Địa chỉ: Đường khu đô thị Đồng Tàu, Thịnh Liệt, Hoàng Mai, Hà Nội<br>
+        Điện thoại: 0975257980<br>
+        Website: https://tongkhoht228.com<br>
+        Email: CSKH@tongkhoht228.com
+      </p>
+    </div>
+    <div class="barcode">
+      <img src="https://barcode.tec-it.com/barcode.ashx?data={{ $order->id }}&code=Code128&dpi=96" alt="barcode">
+      <div class="order-id">#{{ $order->id }}</div>
+    </div>
+  </div>
 
-    <p class="bold">Chi tiết đơn hàng:</p>
-    <table>
-        @foreach ($order->items as $item)
-            <tr>
-                <td>{{ $loop->iteration }}. {{ $item->product->name }} (x{{ $item->quantity }})</td>
-            </tr>
-            <tr>
-                <td>Giá: {{ number_format($item->price, 0, ',', '.') }}đ | Số lượng: {{ $item->quantity }} | Thành tiền: {{ number_format($item->price * $item->quantity, 0, ',', '.') }}đ</td>
-            </tr>
+  <div class="section">
+    <div>
+      <h3>Chi tiết đơn hàng</h3>
+      <table>
+        <tr>
+          <th>Mã sản phẩm</th>
+          <th>Sản phẩm</th>
+          <th>Số lượng</th>
+          <th>Giá</th>
+        </tr>
+        @foreach($order->items as $item)
+        <tr>
+          <td>#SP0000{{ $item->product->id }}</td>
+          <td>{{ $item->product_name }}</td>
+          <td>{{ $item->quantity }}</td>
+          <td>{{ number_format($item->price, 0, ',', '.') }}đ</td>
+        </tr>
         @endforeach
-    </table>
+      </table>
 
-    <div class="divider"></div>
-    <p>
-        Tạm tính: <span class="bold">{{ number_format($order->total, 0, ',', '.') }}đ</span><br>
-        Tổng tiền được giảm: <span class="bold">0đ</span><br>
-        Phí vận chuyển: <span class="bold">Chưa tính</span><br>
-        Tổng: <span class="bold">{{ number_format($order->total, 0, ',', '.') }}đ</span>
-    </p>
-
-    <div class="divider"></div>
-    <p>
-        Tổng điểm tích lũy: -<br>
-        Ví tích điểm: 0 điểm
-    </p>
-
-    <p class="bold">Thông tin người nhận hàng:</p>
-    <p>
-        Họ và tên: {{ $order->name }}<br>
-        Địa chỉ: {{ $order->address ?? '(chưa cập nhật)' }}<br>
-        Điện thoại: {{ $order->phone }}<br>
-        Ngày đặt hàng: <strong>{{ $order->created_at->format('H:i d/m/Y') }}</strong>
-    </p>
-
-    <p>
-        Phương thức thanh toán: <strong>{{ strtoupper($order->payment_method ?? 'COD') }}</strong><br>
-        Trạng thái thanh toán: 
-        <strong>
-            {{ $order->status === 'completed' ? 'ĐÃ THANH TOÁN' : 'CHƯA THANH TOÁN' }}
-        </strong>
-    </p>
-
-    <div class="signature">
-        <div>
-            NGƯỜI NHẬN<br><i>(Ký và ghi rõ họ tên)</i>
-        </div>
-        <div>
-            NHÂN VIÊN BÁN HÀNG<br><i>(Ký và ghi rõ họ tên)</i>
-        </div>
+      <h3>Thông tin thanh toán</h3>
+      <p>
+        Tổng giá sản phẩm: {{ number_format($order->subtotal, 0, ',', '.') }}đ<br>
+        Khuyến mãi: {{ number_format($order->discount ?? 0, 0, ',', '.') }}đ<br>
+        Phí vận chuyển: {{ number_format($order->shipping_fee ?? 0, 0, ',', '.') }}đ<br>
+        <span class="total">Tổng tiền: {{ number_format($order->total, 0, ',', '.') }}đ</span>
+      </p>
     </div>
 
-    
+    <div>
+      <h3>Thông tin đơn hàng</h3>
+      <p>
+        Mã đơn: #{{ $order->id }}<br>
+        Ngày đặt: {{ $order->created_at->format('d/m/Y') }}<br>
+        Phương thức thanh toán: {{ $order->payment_method ?? 'COD' }}<br>
+        Phương thức vận chuyển: {{ $order->shipping_method ?? 'Giao hàng tận nơi' }}
+      </p>
+
+      <h3>Thông tin mua hàng</h3>
+      <p>
+        {{ $order->name }}<br>
+        {{ $order->address }}<br>
+        Điện thoại: {{ $order->phone }}
+      </p>
+    </div>
+  </div>
+
+  <div class="footer">
+    Đăng ký tiếp thị liên kết chia sẻ hoa hồng cùng tổng kho HT228 ngay, hoa hồng lên tới 10%
+  </div>
 </body>
+
 </html>
-
-<script>
-    window.onload = function() {
-        window.print();
-    };
-</script>
-

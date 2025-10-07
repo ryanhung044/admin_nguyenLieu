@@ -19,6 +19,8 @@ class Order extends Model
         'created_at',
         'status',          // pending, completed, canceled, etc.
         'status_payment',
+        'shipping_code',
+        'shipping_provider'
     ];
 
     // Một đơn hàng có nhiều item
