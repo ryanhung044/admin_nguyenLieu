@@ -68,6 +68,7 @@ Route::get('/vnpay/return', [CartController::class, 'callback'])->name('vnpay.re
 
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/', [AppSettingController::class, 'openApp'])->name('admin');
+    Route::get('/admin', [AppSettingController::class, 'openApp'])->name('admin');
 
     Route::get('/logout', [LoginController::class, 'logout'])->name('logout');
     Route::prefix('admin')->name('admin.')->group(function () {
@@ -106,6 +107,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('/chatZalo', [ZaloController::class, 'chatZalo']);
         Route::get('/zalo/login', [ZaloController::class, 'redirectToZalo'])->name('zalo.login');
         Route::get('/zalo/callback', [ZaloController::class, 'handleCallback'])->name('zalo.callback');
+        Route::post('/import-products', [ProductController::class, 'importProductsFromExcel'])->name('import-products.upload');
+        Route::get('/import-products', function () {
+            return view('import-products');
+        });
     });
     Route::post('/products/upload', [ProductController::class, 'upload'])->name('upload');
     Route::put('/admin/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('admin.orders.updateStatus');
@@ -131,6 +136,7 @@ Route::get('/layout2', function () {
 Route::get('/test', function () {
     return dd("ok");
 });
+
 
 // Route::get('/referrer', function () {
 //     return view('referrer');

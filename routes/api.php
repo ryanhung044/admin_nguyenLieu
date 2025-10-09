@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\RewardApiController;
 use App\Http\Controllers\Api\VoucherApiController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ConversationController;
+use App\Http\Controllers\ProductController;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -65,6 +66,10 @@ Route::get('/vouchers/{code}', [VoucherApiController::class, 'show']);
 Route::post('/spin', [RewardApiController::class, 'spin']);
 Route::get('/rewards', [RewardApiController::class, 'getRewards']);
 Route::post('/conversations/{id}/messages', [ConversationController::class, 'sendMessage']);
+Route::post('/vouchers/check', [VoucherApiController::class, 'check']);
+Route::post('/vouchers', [VoucherApiController::class, 'store']);
+
+
 
 // routes/web.php
 Route::get('/image-proxy', function (Request $request) {

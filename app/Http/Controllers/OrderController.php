@@ -112,8 +112,13 @@ class OrderController extends Controller
      */
     public function show(Order $order)
     {
-        $order->load('items.product'); // Load các sản phẩm trong đơn
-        return view('admin.orders.edit', compact('order'));
+        try {
+            $order->load('items.product'); // Load các sản phẩm trong đơn
+            // dd( $order->item);
+            return view('admin.orders.edit', compact('order'));
+        } catch (\Throwable $th) {
+            //throw $th;
+        }
     }
 
     /**

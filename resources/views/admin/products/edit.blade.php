@@ -59,7 +59,7 @@
                     <label for="commission_rate" class="form-label">Hoa hồng cho cộng tác viên:</label>
                     <input type="number" class="form-control @error('commission_rate') is-invalid @enderror"
                         id="commission_rate" name="commission_rate"
-                        value="{{ old('commission_rate', $product->commission_rate) }}">
+                        value="{{ (float) old('commission_rate', (float) $product->commission_rate) }}">
                     @error('commission_rate')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -101,7 +101,7 @@
                 <div class="mb-3">
                     <label for="stock" class="form-label">Số lượng:</label>
                     <input type="number" class="form-control @error('stock') is-invalid @enderror" id="stock"
-                        name="stock" value="{{ old('stock', $product->stock) }}">
+                        name="stock" value="{{ old('stock', $product->stock) }}" required>
                     @error('stock')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -110,7 +110,7 @@
                     <div class="mb-3 col-md-6">
                         <label for="price" class="form-label">Giá niêm yết</label>
                         <input type="number" class="form-control @error('price') is-invalid @enderror" id="price"
-                            name="price" value="{{ old('price', $product->price) }}">
+                            name="price" value="{{ (float) old('price', (float) $product->price) }}" min="0" step="1000">
                         @error('price')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -119,7 +119,7 @@
                     <div class="mb-3 col-md-6">
                         <label for="sale_price" class="form-label">Giá bán</label>
                         <input type="number" class="form-control @error('sale_price') is-invalid @enderror" id="sale_price"
-                            name="sale_price" value="{{ old('sale_price', $product->sale_price) }}" required>
+                            name="sale_price" value="{{ (float) old('sale_price', (float) $product->sale_price) }}" required min="1000" step="1000">
                         @error('sale_price')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -128,12 +128,14 @@
                 <div class="mb-3">
                     <label for="thumbnail" class="form-label">Ảnh đại diện</label>
                     <input type="file" class="form-control @error('thumbnail') is-invalid @enderror" id="thumbnail"
-                        name="thumbnail">
+                        name="thumbnail" accept="image/*">
                     @error('thumbnail')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
+                    <img id="thumbnail-preview" src="#" alt="Xem trước ảnh" class="mt-2"
+                        style="max-width: 150px; display:none; border-radius:8px;">
                     @if ($product->thumbnail)
-                        <div class="mt-2">
+                        <div class="mt-2" id="thumbnail-db">
                             <img src="{{ asset('storage/' . $product->thumbnail) }}" alt="Thumbnail" width="100">
                         </div>
                     @endif
@@ -143,11 +145,12 @@
                     <label for="images" class="form-label">Ảnh sản phẩm (nhiều ảnh)</label>
                     <input type="file" class="form-control @error('images.*') is-invalid @enderror" id="images"
                         name="images[]" multiple>
+                    <div id="multi-image-preview" class="mt-2 d-flex gap-2 flex-wrap"></div>
                     @error('images.*')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                     @if ($product->images)
-                        <div class="mt-2">
+                        <div class="mt-2" id="multi-image-db">
                             @foreach (json_decode($product->images) as $image)
                                 <img src="{{ asset('storage/' . $image) }}" alt="Product Image" width="100"
                                     class="mr-2">
@@ -418,10 +421,91 @@
             .then(editor => {
                 editor.editing.view.change(writer => {
                     writer.setStyle('min-height', '300px', editor.editing.view.document.getRoot());
+                    writer.setStyle('max-height', '550px', editor.editing.view.document.getRoot());
                 });
             })
             .catch(error => {
                 console.error(error);
             });
     </script>
+    <script>
+        // ====== Xem trước ảnh đại diện ======
+        document.addEventListener('DOMContentLoaded', function() {
+            const thumbnailInput = document.getElementById('thumbnail');
+            const preview = document.getElementById('thumbnail-preview');
+            const thumbnaildb = document.getElementById('thumbnail-db');
+
+            thumbnailInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    preview.src = URL.createObjectURL(file);
+                    preview.style.display = 'block';
+                    thumbnaildb.style.display = 'none';
+                } else {
+                    preview.style.display = 'none';
+                    thumbnaildb.style.display = 'block';
+                }
+            });
+        });
+
+        // ====== Xem trước nhiều ảnh sản phẩm ======
+        const imagesInput = document.getElementById('images');
+        const imagesDbContainer = document.getElementById('multi-image-db');
+
+        imagesInput.addEventListener('change', function(event) {
+            const files = event.target.files;
+
+            // Ẩn ảnh từ DB khi chọn ảnh mới
+            if (files.length > 0 && imagesDbContainer) {
+                imagesDbContainer.style.display = 'none';
+            } else {
+                imagesDbContainer.style.display = 'block';
+            }
+
+            // Xóa container cũ (nếu có)
+            let previewContainer = document.getElementById('multi-image-preview');
+            if (!previewContainer) {
+                previewContainer = document.createElement('div');
+                previewContainer.id = 'multi-image-preview';
+                previewContainer.classList.add('mt-2', 'd-flex', 'gap-2', 'flex-wrap');
+                imagesInput.insertAdjacentElement('afterend', previewContainer);
+            } else {
+                previewContainer.innerHTML = '';
+            }
+
+            // Tạo preview ảnh mới
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.width = 100;
+                    img.classList.add('border', 'rounded');
+                    previewContainer.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+
+        // ====== Tự sinh slug  ======
+        document.addEventListener('DOMContentLoaded', function() {
+            const nameInput = document.getElementById('name');
+            const slugInput = document.getElementById('slug');
+
+            nameInput.addEventListener('input', function() {
+                const name = nameInput.value.trim();
+
+                // Tạo slug bỏ dấu tiếng Việt
+                const slug = name
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)+/g, '');
+
+                slugInput.value = slug;
+            });
+        });
+    </script>
+
 @endsection

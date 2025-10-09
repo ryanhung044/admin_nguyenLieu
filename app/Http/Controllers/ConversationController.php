@@ -721,7 +721,7 @@ class ConversationController extends Controller
                 ->first();
 
             if ($conversation) {
-             } else {
+            } else {
                 // Create
                 $conversation = Conversation::create([
                     'user_id'     => $user->zalo_id,
@@ -927,7 +927,9 @@ class ConversationController extends Controller
                     [
                         'access_token'  => $data['access_token'],
                         'refresh_token' => $data['refresh_token'] ?? $refreshToken,
-                        'expired_at'    => now()->addSeconds($data['expires_in'] ?? 3600),
+                        'expired_at' => isset($data['expires_in'])
+                            ? now()->addSeconds($data['expires_in'])
+                            : now()->addDays(30),
                     ]
                 );
 

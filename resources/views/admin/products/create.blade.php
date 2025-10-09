@@ -78,7 +78,7 @@
                 <div class="mb-3">
                     <label for="stock" class="form-label">Số lượng:</label>
                     <input type="number" min="0" class="form-control @error('stock') is-invalid @enderror"
-                        id="stock" name="stock" value="{{ old('stock') }}">
+                        id="stock" name="stock" value="{{ old('stock') }}" required>
                     @error('stock')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -102,7 +102,7 @@
                     <div class="mb-3 col-md-6">
                         <label for="price" class="form-label">Giá niêm yết</label>
                         <input type="number" class="form-control @error('price') is-invalid @enderror" id="price"
-                            name="price" value="{{ old('price') }}">
+                            name="price" value="{{ old('price') }}" min="1000" step="1000">
                         @error('price')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -111,7 +111,7 @@
                     <div class="mb-3 col-md-6">
                         <label for="sale_price" class="form-label">Giá bán</label>
                         <input type="number" class="form-control @error('sale_price') is-invalid @enderror" id="sale_price"
-                            name="sale_price" value="{{ old('sale_price') }}" required>
+                            name="sale_price" value="{{ old('sale_price') }}" required min="1000" step="1000">
                         @error('sale_price')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -121,6 +121,8 @@
                     <label for="thumbnail" class="form-label">Ảnh đại diện</label>
                     <input type="file" class="form-control @error('thumbnail') is-invalid @enderror" id="thumbnail"
                         name="thumbnail">
+                    <img id="thumbnail-preview" src="#" alt="Xem trước ảnh" class="mt-2"
+                        style="max-width: 150px; display:none; border-radius:8px;">
                     @error('thumbnail')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -130,6 +132,8 @@
                     <label for="images" class="form-label">Ảnh sản phẩm (nhiều ảnh)</label>
                     <input type="file" class="form-control @error('images.*') is-invalid @enderror" id="images"
                         name="images[]" multiple>
+                    <div id="images-preview" class="d-flex flex-wrap gap-2 mt-2"></div>
+
                     @error('images.*')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -325,10 +329,78 @@
             .then(editor => {
                 editor.editing.view.change(writer => {
                     writer.setStyle('min-height', '300px', editor.editing.view.document.getRoot());
+                    writer.setStyle('max-height', '550px', editor.editing.view.document.getRoot());
                 });
             })
             .catch(error => {
                 console.error(error);
             });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const nameInput = document.getElementById('name');
+            const slugInput = document.getElementById('slug');
+            const skuInput = document.getElementById('sku');
+
+            nameInput.addEventListener('input', function() {
+                const name = nameInput.value.trim();
+
+                // 🔹 Tạo slug (giống Str::slug)
+                const baseSlug = name
+                    .toLowerCase()
+                    .normalize('NFD') // Bỏ dấu tiếng Việt
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/(^-|-$)+/g, '');
+
+                // Không cần xử lý trùng slug ở client (vì BE đã xử lý), chỉ hiển thị baseSlug
+                slugInput.value = baseSlug;
+
+                // 🔹 Tạo SKU giống BE: 3 ký tự đầu của slug + 5 ký tự random in hoa
+                const prefix = baseSlug.substring(0, 3).toUpperCase();
+                const randomPart = Array.from({
+                        length: 5
+                    }, () =>
+                    String.fromCharCode(65 + Math.floor(Math.random() * 26))
+                ).join('');
+
+                skuInput.value = `${prefix}-${randomPart}`;
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const thumbnailInput = document.getElementById('thumbnail');
+            const preview = document.getElementById('thumbnail-preview');
+
+            thumbnailInput.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    preview.src = URL.createObjectURL(file);
+                    preview.style.display = 'block';
+                } else {
+                    preview.style.display = 'none';
+                }
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const imagesInput = document.getElementById('images');
+            const imagesPreview = document.getElementById('images-preview');
+
+            imagesInput.addEventListener('change', function(e) {
+                imagesPreview.innerHTML = ''; // Xóa preview cũ
+                Array.from(e.target.files).forEach(file => {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(file);
+                    img.style.maxWidth = '100px';
+                    img.style.borderRadius = '8px';
+                    img.style.marginRight = '5px';
+                    img.style.marginBottom = '5px';
+                    imagesPreview.appendChild(img);
+                });
+            });
+        });
     </script>
 @endsection

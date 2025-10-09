@@ -35,9 +35,9 @@
                 <div class="card-body">
                     @foreach ($order->items as $item)
                         <p>
-                            <img src="{{ asset('storage/' . $item->product->thumbnail) }}" alt="{{ $item->product->name }}" style="width: 50px; height: 50px; object-fit: cover;" class="me-3">
+                            <img src="{{ asset('storage/' . $item->thumbnail) }}" alt="{{ $item->product_name }}" style="width: 50px; height: 50px; object-fit: cover;" class="me-3">
                             
-                            <strong>{{ $item->product->name }}</strong><br>
+                            <strong>{{ $item->product_name }}</strong><br>
                             Giá: {{ number_format($item->price, 0, ',', '.') }}đ |
                             SL: {{ $item->quantity }} |
                             Thành tiền: {{ number_format($item->price * $item->quantity, 0, ',', '.') }}đ

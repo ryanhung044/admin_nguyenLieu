@@ -202,7 +202,7 @@
                 </tr>
                 @foreach ($order->items as $item)
                     <tr>
-                        <td>#SP0000{{ $item->product->id }}</td>
+                        <td>#SP0000{{ $item->product_id }}</td>
                         <td>{{ $item->product_name }}</td>
                         <td>{{ $item->quantity }}</td>
                         <td>{{ number_format($item->price, 0, ',', '.') }}đ</td>

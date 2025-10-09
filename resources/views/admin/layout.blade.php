@@ -4,6 +4,9 @@
     $notifications = \App\Models\Notification::latest()->whereDate('created_at', Carbon::today())->get(); // Lấy tất cả thông báo mới nhất
     $Countnotifications = \App\Models\Notification::whereDate('created_at', Carbon::today())->count();
     // dd($AppSetting->logo_path);
+    $token = \App\Models\ZaloToken::orderBy('expired_at', 'desc')->first();
+    $zaloDaysRemaining = $token ? Carbon::now()->diffInDays(Carbon::parse($token->expired_at), false) : null; // null nếu không có token
+
 @endphp
 
 <!DOCTYPE html>
@@ -98,84 +101,108 @@
             </div>
             <div class="sidebar-wrapper scrollbar scrollbar-inner">
                 <div class="sidebar-content">
-                    <ul class="nav nav-secondary">
-                        <li class="nav-item active">
-                            <a href="{{ route('admin') }}" class="collapsed" aria-expanded="false">
+                    <ul class="nav nav-primary">
+
+                        <!-- Trang chủ -->
+                        <li class="nav-item {{ request()->routeIs('admin') ? 'active' : '' }}">
+                            <a href="{{ route('admin') }}">
                                 <i class="fas fa-home"></i>
                                 <p>Trang chủ</p>
                             </a>
-
                         </li>
+
+                        <!-- Cửa hàng -->
                         <li class="nav-section">
-                            <span class="sidebar-mini-icon">
-                                <i class="fa fa-ellipsis-h"></i>
-                            </span>
+                            <span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span>
                             <h4 class="text-section">Cửa hàng</h4>
                         </li>
-                        <li class="nav-item">
+
+                        <li class="nav-item {{ request()->routeIs('admin.conversations.*') ? 'active' : '' }}">
                             <a href="{{ route('admin.conversations.index') }}">
                                 <i class="fa-solid fa-envelope"></i>
                                 <p>Liên hệ</p>
                             </a>
+                        </li>
+
+                        <li class="nav-item {{ request()->routeIs('admin.app-setting.*') ? 'active' : '' }}">
                             <a href="{{ route('admin.app-setting.index') }}">
                                 <i class="fas fa-info-circle"></i>
                                 <p>Thông tin ứng dụng</p>
-                                {{-- <span class="caret"></span> --}}
                             </a>
-                            <a data-bs-toggle="collapse" href="#banners">
+                        </li>
+
+                        <!-- Banner -->
+                        <li class="nav-item {{ request()->routeIs('admin.banners.*') ? 'active' : '' }}">
+                            <a data-bs-toggle="collapse" href="#banners"
+                                aria-expanded="{{ request()->routeIs('admin.banners.*') ? 'true' : 'false' }}">
                                 <i class="far fa-images"></i>
                                 <p>Quản lý banner</p>
                                 <span class="caret"></span>
                             </a>
-                            <div class="collapse" id="banners">
+                            <div class="collapse {{ request()->routeIs('admin.banners.*') ? 'show' : '' }}"
+                                id="banners">
                                 <ul class="nav nav-collapse">
-                                    <li>
+                                    <li class="{{ request()->routeIs('admin.banners.index') ? 'active' : '' }}">
                                         <a href="{{ route('admin.banners.index') }}">
                                             <span class="sub-item">Danh sách banner</span>
                                         </a>
                                     </li>
-
                                 </ul>
                             </div>
+                        </li>
+
+                        <li class="nav-item {{ request()->routeIs('admin.bank-accounts.*') ? 'active' : '' }}">
                             <a href="{{ route('admin.bank-accounts.index') }}">
                                 <i class="fas fa-money-check-alt"></i>
                                 <p>Yêu cầu rút tiền</p>
                             </a>
-
                         </li>
+
+                        <!-- Đơn hàng -->
                         <li class="nav-section">
-                            <span class="sidebar-mini-icon">
-                                <i class="fa fa-ellipsis-h"></i>
-                            </span>
+                            <span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span>
                             <h4 class="text-section">Đơn hàng</h4>
                         </li>
-                        <li class="nav-item">
+
+                        <li class="nav-item {{ request()->routeIs('admin.orders.*') ? 'active' : '' }}">
                             <a href="{{ route('admin.orders.index') }}">
                                 <i class="fas fa-box"></i>
                                 <p>Quản lý đơn hàng</p>
                             </a>
                         </li>
+
+                        <li class="nav-item {{ request()->routeIs('admin.inventory.*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.inventory.indexStock') }}">
+                                <i class="fas fa-th-large"></i>
+                                <p>Quản lý tồn kho</p>
+                            </a>
+                        </li>
+
+                        <!-- Sản phẩm -->
                         <li class="nav-section">
-                            <span class="sidebar-mini-icon">
-                                <i class="fa fa-ellipsis-h"></i>
-                            </span>
+                            <span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span>
                             <h4 class="text-section">Sản phẩm</h4>
                         </li>
-                        {{--  --}}
-                        <li class="nav-item">
-                            <a data-bs-toggle="collapse" href="#productCategory">
+
+                        <!-- Danh mục sản phẩm -->
+                        <li class="nav-item {{ request()->routeIs('admin.product-categories.*') ? 'active' : '' }}">
+                            <a data-bs-toggle="collapse" href="#productCategory"
+                                aria-expanded="{{ request()->routeIs('admin.product-categories.*') ? 'true' : 'false' }}">
                                 <i class="fas fa-folder-open"></i>
                                 <p>Danh mục sản phẩm</p>
                                 <span class="caret"></span>
                             </a>
-                            <div class="collapse" id="productCategory">
+                            <div class="collapse {{ request()->routeIs('admin.product-categories.*') ? 'show' : '' }}"
+                                id="productCategory">
                                 <ul class="nav nav-collapse">
-                                    <li>
+                                    <li
+                                        class="{{ request()->routeIs('admin.product-categories.index') ? 'active' : '' }}">
                                         <a href="{{ route('admin.product-categories.index') }}">
                                             <span class="sub-item">Danh sách danh mục</span>
                                         </a>
                                     </li>
-                                    <li>
+                                    <li
+                                        class="{{ request()->routeIs('admin.product-categories.create') ? 'active' : '' }}">
                                         <a href="{{ route('admin.product-categories.create') }}">
                                             <span class="sub-item">Thêm mới danh mục</span>
                                         </a>
@@ -183,56 +210,55 @@
                                 </ul>
                             </div>
                         </li>
-                        <li class="nav-item">
-                            <a data-bs-toggle="collapse" href="#product">
+
+                        <!-- Quản lý sản phẩm -->
+                        <li class="nav-item {{ request()->routeIs('admin.products.*') ? 'active' : '' }}">
+                            <a data-bs-toggle="collapse" href="#product"
+                                aria-expanded="{{ request()->routeIs('admin.products.*') ? 'true' : 'false' }}">
                                 <i class="fab fa-product-hunt"></i>
                                 <p>Quản lý sản phẩm</p>
                                 <span class="caret"></span>
                             </a>
-                            <div class="collapse" id="product">
+                            <div class="collapse {{ request()->routeIs('admin.products.*') ? 'show' : '' }}"
+                                id="product">
                                 <ul class="nav nav-collapse">
-                                    <li>
+                                    <li class="{{ request()->routeIs('admin.products.index') ? 'active' : '' }}">
                                         <a href="{{ route('admin.products.index') }}">
                                             <span class="sub-item">Danh sách sản phẩm</span>
                                         </a>
                                     </li>
-                                    <li>
+                                    <li class="{{ request()->routeIs('admin.products.create') ? 'active' : '' }}">
                                         <a href="{{ route('admin.products.create') }}">
                                             <span class="sub-item">Thêm mới sản phẩm</span>
                                         </a>
                                     </li>
                                 </ul>
                             </div>
-                            <a href="{{ route('admin.inventory.indexStock') }}">
-                                <i class="fas fa-th-large"></i>
-                                <p>Quản lý tồn kho</p>
-                            </a>
-                            <a href="{{ route('admin.commissions.index') }}">
-                                <i class="fas fa-dollar-sign"></i>
-                                <p>Cấu hình hoa hồng</p>
-                            </a>
                         </li>
+
+                        <!-- Tin tức -->
                         <li class="nav-section">
-                            <span class="sidebar-mini-icon">
-                                <i class="fa fa-ellipsis-h"></i>
-                            </span>
+                            <span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span>
                             <h4 class="text-section">Tin tức</h4>
                         </li>
-                        {{--  --}}
-                        <li class="nav-item">
-                            <a data-bs-toggle="collapse" href="#Category">
+
+                        <!-- Danh mục bài viết -->
+                        <li class="nav-item {{ request()->routeIs('admin.categories.*') ? 'active' : '' }}">
+                            <a data-bs-toggle="collapse" href="#Category"
+                                aria-expanded="{{ request()->routeIs('admin.categories.*') ? 'true' : 'false' }}">
                                 <i class="fas fa-folder"></i>
                                 <p>Danh mục bài viết</p>
                                 <span class="caret"></span>
                             </a>
-                            <div class="collapse" id="Category">
+                            <div class="collapse {{ request()->routeIs('admin.categories.*') ? 'show' : '' }}"
+                                id="Category">
                                 <ul class="nav nav-collapse">
-                                    <li>
+                                    <li class="{{ request()->routeIs('admin.categories.index') ? 'active' : '' }}">
                                         <a href="{{ route('admin.categories.index') }}">
                                             <span class="sub-item">Danh sách danh mục</span>
                                         </a>
                                     </li>
-                                    <li>
+                                    <li class="{{ request()->routeIs('admin.categories.create') ? 'active' : '' }}">
                                         <a href="{{ route('admin.categories.create') }}">
                                             <span class="sub-item">Thêm mới danh mục</span>
                                         </a>
@@ -240,20 +266,24 @@
                                 </ul>
                             </div>
                         </li>
-                        <li class="nav-item">
-                            <a data-bs-toggle="collapse" href="#Aritcles">
+
+                        <!-- Quản lý bài viết -->
+                        <li class="nav-item {{ request()->routeIs('admin.articles.*') ? 'active' : '' }}">
+                            <a data-bs-toggle="collapse" href="#Aritcles"
+                                aria-expanded="{{ request()->routeIs('admin.articles.*') ? 'true' : 'false' }}">
                                 <i class="fas fa-newspaper"></i>
                                 <p>Quản lý bài viết</p>
                                 <span class="caret"></span>
                             </a>
-                            <div class="collapse" id="Aritcles">
+                            <div class="collapse {{ request()->routeIs('admin.articles.*') ? 'show' : '' }}"
+                                id="Aritcles">
                                 <ul class="nav nav-collapse">
-                                    <li>
+                                    <li class="{{ request()->routeIs('admin.articles.index') ? 'active' : '' }}">
                                         <a href="{{ route('admin.articles.index') }}">
                                             <span class="sub-item">Danh sách bài viết</span>
                                         </a>
                                     </li>
-                                    <li>
+                                    <li class="{{ request()->routeIs('admin.articles.create') ? 'active' : '' }}">
                                         <a href="{{ route('admin.articles.create') }}">
                                             <span class="sub-item">Thêm mới bài viết</span>
                                         </a>
@@ -262,239 +292,18 @@
                             </div>
                         </li>
 
-                        
-
-      
-                        {{-- <li class="nav-section">
-                            <span class="sidebar-mini-icon">
-                                <i class="fa fa-ellipsis-h"></i>
-                            </span>
-                            <h4 class="text-section">Template</h4>
-                        </li>
-                        <li class="nav-item">
-                            <a data-bs-toggle="collapse" href="#base">
-                                <i class="fas fa-layer-group"></i>
-                                <p>Quản lý công ty</p>
-                                <span class="caret"></span>
-                            </a>
-                            <div class="collapse" id="base">
-                                <ul class="nav nav-collapse">
-                                    <li>
-                                        <a href="components/avatars.html">
-                                            <span class="sub-item">Avatars</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="components/buttons.html">
-                                            <span class="sub-item">Buttons</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="components/gridsystem.html">
-                                            <span class="sub-item">Grid System</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="components/panels.html">
-                                            <span class="sub-item">Panels</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="components/notifications.html">
-                                            <span class="sub-item">Notifications</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="components/sweetalert.html">
-                                            <span class="sub-item">Sweet Alert</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="components/font-awesome-icons.html">
-                                            <span class="sub-item">Font Awesome Icons</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="components/simple-line-icons.html">
-                                            <span class="sub-item">Simple Line Icons</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="components/typography.html">
-                                            <span class="sub-item">Typography</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="nav-item">
-                            <a data-bs-toggle="collapse" href="#sidebarLayouts">
-                                <i class="fas fa-th-list"></i>
-                                <p>Sidebar Layouts</p>
-                                <span class="caret"></span>
-                            </a>
-                            <div class="collapse" id="sidebarLayouts">
-                                <ul class="nav nav-collapse">
-                                    <li>
-                                        <a href="sidebar-style-2.html">
-                                            <span class="sub-item">Sidebar Style 2</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="icon-menu.html">
-                                            <span class="sub-item">Icon Menu</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="nav-item">
-                            <a data-bs-toggle="collapse" href="#forms">
-                                <i class="fas fa-pen-square"></i>
-                                <p>Forms</p>
-                                <span class="caret"></span>
-                            </a>
-                            <div class="collapse" id="forms">
-                                <ul class="nav nav-collapse">
-                                    <li>
-                                        <a href="forms/forms.html">
-                                            <span class="sub-item">Basic Form</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="nav-item">
-                            <a data-bs-toggle="collapse" href="#tables">
-                                <i class="fas fa-table"></i>
-                                <p>Tables</p>
-                                <span class="caret"></span>
-                            </a>
-                            <div class="collapse" id="tables">
-                                <ul class="nav nav-collapse">
-                                    <li>
-                                        <a href="tables/tables.html">
-                                            <span class="sub-item">Basic Table</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="tables/datatables.html">
-                                            <span class="sub-item">Datatables</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="nav-item">
-                            <a data-bs-toggle="collapse" href="#maps">
-                                <i class="fas fa-map-marker-alt"></i>
-                                <p>Maps</p>
-                                <span class="caret"></span>
-                            </a>
-                            <div class="collapse" id="maps">
-                                <ul class="nav nav-collapse">
-                                    <li>
-                                        <a href="maps/googlemaps.html">
-                                            <span class="sub-item">Google Maps</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="maps/jsvectormap.html">
-                                            <span class="sub-item">Jsvectormap</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="nav-item">
-                            <a data-bs-toggle="collapse" href="#charts">
-                                <i class="far fa-chart-bar"></i>
-                                <p>Charts</p>
-                                <span class="caret"></span>
-                            </a>
-                            <div class="collapse" id="charts">
-                                <ul class="nav nav-collapse">
-                                    <li>
-                                        <a href="charts/charts.html">
-                                            <span class="sub-item">Chart Js</span>
-                                        </a>
-                                    </li>
-                                    <li>
-                                        <a href="charts/sparkline.html">
-                                            <span class="sub-item">Sparkline</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="nav-item">
-                            <a href="widgets.html">
-                                <i class="fas fa-desktop"></i>
-                                <p>Widgets</p>
-                                <span class="badge badge-success">4</span>
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a data-bs-toggle="collapse" href="#submenu">
-                                <i class="fas fa-bars"></i>
-                                <p>Menu Levels</p>
-                                <span class="caret"></span>
-                            </a>
-                            <div class="collapse" id="submenu">
-                                <ul class="nav nav-collapse">
-                                    <li>
-                                        <a data-bs-toggle="collapse" href="#subnav1">
-                                            <span class="sub-item">Level 1</span>
-                                            <span class="caret"></span>
-                                        </a>
-                                        <div class="collapse" id="subnav1">
-                                            <ul class="nav nav-collapse subnav">
-                                                <li>
-                                                    <a href="#">
-                                                        <span class="sub-item">Level 2</span>
-                                                    </a>
-                                                </li>
-                                                <li>
-                                                    <a href="#">
-                                                        <span class="sub-item">Level 2</span>
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </li>
-                                    <li>
-                                        <a data-bs-toggle="collapse" href="#subnav2">
-                                            <span class="sub-item">Level 1</span>
-                                            <span class="caret"></span>
-                                        </a>
-                                        <div class="collapse" id="subnav2">
-                                            <ul class="nav nav-collapse subnav">
-                                                <li>
-                                                    <a href="#">
-                                                        <span class="sub-item">Level 2</span>
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                        </div>
-                                    </li>
-                                    <li>
-                                        <a href="#">
-                                            <span class="sub-item">Level 1</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li> --}}
+                        <!-- Đăng xuất -->
                         <li class="nav-item">
                             <a href="/logout">
-                                {{-- <i class="fas fa-desktop"></i> --}}
                                 <i class="fas fa-sign-out-alt"></i>
                                 <p>Đăng xuất</p>
                             </a>
                         </li>
+
                     </ul>
                 </div>
             </div>
+
         </div>
         <!-- End Sidebar -->
 
@@ -550,75 +359,6 @@
                                     </form>
                                 </ul>
                             </li>
-                            {{-- <li class="nav-item topbar-icon dropdown hidden-caret">
-                                <a class="nav-link dropdown-toggle" href="#" id="messageDropdown"
-                                    role="button" data-bs-toggle="dropdown" aria-haspopup="true"
-                                    aria-expanded="false">
-                                    <i class="fa fa-envelope"></i>
-                                </a>
-                                <ul class="dropdown-menu messages-notif-box animated fadeIn"
-                                    aria-labelledby="messageDropdown">
-                                    <li>
-                                        <div class="dropdown-title d-flex justify-content-between align-items-center">
-                                            Messages
-                                            <a href="#" class="small">Mark all as read</a>
-                                        </div>
-                                    </li>
-                                    <li>
-                                        <div class="message-notif-scroll scrollbar-outer">
-                                            <div class="notif-center">
-                                                <a href="#">
-                                                    <div class="notif-img">
-                                                        <img src="/assets/img/jm_denis.jpg" alt="Img Profile" />
-                                                    </div>
-                                                    <div class="notif-content">
-                                                        <span class="subject">Jimmy Denis</span>
-                                                        <span class="block"> How are you ? </span>
-                                                        <span class="time">5 minutes ago</span>
-                                                    </div>
-                                                </a>
-                                                <a href="#">
-                                                    <div class="notif-img">
-                                                        <img src="/assets/img/chadengle.jpg" alt="Img Profile" />
-                                                    </div>
-                                                    <div class="notif-content">
-                                                        <span class="subject">Chad</span>
-                                                        <span class="block"> Ok, Thanks ! </span>
-                                                        <span class="time">12 minutes ago</span>
-                                                    </div>
-                                                </a>
-                                                <a href="#">
-                                                    <div class="notif-img">
-                                                        <img src="/assets/img/mlane.jpg" alt="Img Profile" />
-                                                    </div>
-                                                    <div class="notif-content">
-                                                        <span class="subject">Jhon Doe</span>
-                                                        <span class="block">
-                                                            Ready for the meeting today...
-                                                        </span>
-                                                        <span class="time">12 minutes ago</span>
-                                                    </div>
-                                                </a>
-                                                <a href="#">
-                                                    <div class="notif-img">
-                                                        <img src="/assets/img/talha.jpg" alt="Img Profile" />
-                                                    </div>
-                                                    <div class="notif-content">
-                                                        <span class="subject">Talha</span>
-                                                        <span class="block"> Hi, Apa Kabar ? </span>
-                                                        <span class="time">17 minutes ago</span>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </li>
-                                    <li>
-                                        <a class="see-all" href="javascript:void(0);">See all messages<i
-                                                class="fa fa-angle-right"></i>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </li> --}}
                             <li class="nav-item topbar-icon dropdown hidden-caret">
                                 <a class="nav-link dropdown-toggle" href="#" id="notifDropdown" role="button"
                                     data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -648,37 +388,6 @@
                                                         </div>
                                                     </a>
                                                 @endforeach
-                                                {{-- <a href="#">
-                                                    <div class="notif-icon notif-success">
-                                                        <i class="fa fa-comment"></i>
-                                                    </div>
-                                                    <div class="notif-content">
-                                                        <span class="block">
-                                                            Rahmad commented on Admin
-                                                        </span>
-                                                        <span class="time">12 minutes ago</span>
-                                                    </div>
-                                                </a>
-                                                <a href="#">
-                                                    <div class="notif-img">
-                                                        <img src="/assets/img/profile2.jpg" alt="Img Profile" />
-                                                    </div>
-                                                    <div class="notif-content">
-                                                        <span class="block">
-                                                            Reza send messages to you
-                                                        </span>
-                                                        <span class="time">12 minutes ago</span>
-                                                    </div>
-                                                </a>
-                                                <a href="#">
-                                                    <div class="notif-icon notif-danger">
-                                                        <i class="fa fa-heart"></i>
-                                                    </div>
-                                                    <div class="notif-content">
-                                                        <span class="block"> Farrah liked Admin </span>
-                                                        <span class="time">17 minutes ago</span>
-                                                    </div>
-                                                </a> --}}
                                             </div>
                                         </div>
                                     </li>
@@ -689,72 +398,6 @@
                                     </li>
                                 </ul>
                             </li>
-                            {{-- <li class="nav-item topbar-icon dropdown hidden-caret">
-                                <a class="nav-link" data-bs-toggle="dropdown" href="#" aria-expanded="false">
-                                    <i class="fas fa-layer-group"></i>
-                                </a>
-                                <div class="dropdown-menu quick-actions animated fadeIn">
-                                    <div class="quick-actions-header">
-                                        <span class="title mb-1">Quick Actions</span>
-                                        <span class="subtitle op-7">Shortcuts</span>
-                                    </div>
-                                    <div class="quick-actions-scroll scrollbar-outer">
-                                        <div class="quick-actions-items">
-                                            <div class="row m-0">
-                                                <a class="col-6 col-md-4 p-0" href="#">
-                                                    <div class="quick-actions-item">
-                                                        <div class="avatar-item bg-danger rounded-circle">
-                                                            <i class="far fa-calendar-alt"></i>
-                                                        </div>
-                                                        <span class="text">Calendar</span>
-                                                    </div>
-                                                </a>
-                                                <a class="col-6 col-md-4 p-0" href="#">
-                                                    <div class="quick-actions-item">
-                                                        <div class="avatar-item bg-warning rounded-circle">
-                                                            <i class="fas fa-map"></i>
-                                                        </div>
-                                                        <span class="text">Maps</span>
-                                                    </div>
-                                                </a>
-                                                <a class="col-6 col-md-4 p-0" href="#">
-                                                    <div class="quick-actions-item">
-                                                        <div class="avatar-item bg-info rounded-circle">
-                                                            <i class="fas fa-file-excel"></i>
-                                                        </div>
-                                                        <span class="text">Reports</span>
-                                                    </div>
-                                                </a>
-                                                <a class="col-6 col-md-4 p-0" href="#">
-                                                    <div class="quick-actions-item">
-                                                        <div class="avatar-item bg-success rounded-circle">
-                                                            <i class="fas fa-envelope"></i>
-                                                        </div>
-                                                        <span class="text">Emails</span>
-                                                    </div>
-                                                </a>
-                                                <a class="col-6 col-md-4 p-0" href="#">
-                                                    <div class="quick-actions-item">
-                                                        <div class="avatar-item bg-primary rounded-circle">
-                                                            <i class="fas fa-file-invoice-dollar"></i>
-                                                        </div>
-                                                        <span class="text">Invoice</span>
-                                                    </div>
-                                                </a>
-                                                <a class="col-6 col-md-4 p-0" href="#">
-                                                    <div class="quick-actions-item">
-                                                        <div class="avatar-item bg-secondary rounded-circle">
-                                                            <i class="fas fa-credit-card"></i>
-                                                        </div>
-                                                        <span class="text">Payments</span>
-                                                    </div>
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </li> --}}
-
                             <li class="nav-item topbar-user dropdown hidden-caret">
                                 <a class="dropdown-toggle profile-pic" data-bs-toggle="dropdown" href="#"
                                     aria-expanded="false">
@@ -804,6 +447,31 @@
 
             <div class="container">
                 <div class="page-inner">
+                    @if (is_null($zaloDaysRemaining) || $zaloDaysRemaining <= 0)
+                        <div class="d-flex align-items-center justify-content-between p-4 mb-4 rounded-3 shadow-lg"
+                            style="background: linear-gradient(135deg, #ff4d4f, #d9363e); color: white;">
+                            <div class="d-flex align-items-center gap-3">
+                                <i class="fas fa-times-circle fa-3x"></i>
+                                <div>
+                                    <h5 class="fw-bold mb-1">Token Zalo đã hết hạn!</h5>
+                                    <p class="mb-0">Vui lòng tạo token mới để tiếp tục sử dụng dịch vụ.</p>
+                                </div>
+                            </div>
+                            <a href="https://oauth.zaloapp.com/v4/oa/permission?app_id=3940852742391147148&redirect_uri=https%3A%2F%2Fadmin228.tinobot.com%2Fapi%2Fwebhook%2Fzalo"
+                                class="btn btn-light btn-lg fw-bold shadow">Tạo token mới</a>
+                        </div>
+                    @elseif($zaloDaysRemaining < 7)
+                        <div class="d-flex align-items-center justify-content-between p-3 mb-4 rounded-3 shadow-sm border border-warning"
+                            style="background: #fff3cd;">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                                <span class="fw-bold">Token Zalo sắp hết hạn: <span
+                                        class="text-warning">{{ $zaloDaysRemaining }} ngày còn lại</span></span>
+                            </div>
+                            <a href="https://oauth.zaloapp.com/v4/oa/permission?app_id=3940852742391147148&redirect_uri=https%3A%2F%2Fadmin228.tinobot.com%2Fapi%2Fwebhook%2Fzalo"
+                                class="btn btn-warning btn-sm fw-bold">Tạo token mới</a>
+                        </div>
+                    @endif
                     @if ($errors->any())
                         <div class="alert alert-danger">
                             <ul>
@@ -827,35 +495,15 @@
 
             <footer class="footer">
                 <div class="container-fluid d-flex justify-content-between text-center">
-                    {{-- <nav class="pull-left">
-                        <ul class="nav">
-                            <li class="nav-item">
-                                <a class="nav-link" href="http://www.themekita.com">
-                                    ThemeKita
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="#"> Help </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="#"> Licenses </a>
-                            </li>
-                        </ul>
-                    </nav> --}}
                     <div class="copyright w-100 text-center">
                         2025, Được thực hiện bởi
                         <a href="https://www.facebook.com/profile.php?id=100053830937586">Trần Huy Hưng</a> <i
                             class="fa fa-heart heart text-danger"></i>
                     </div>
-                    {{-- <div>
-                        Distributed by
-                        <a target="_blank" href="https://themewagon.com/">ThemeWagon</a>.
-                    </div> --}}
                 </div>
             </footer>
         </div>
 
-        <!-- Custom template | don't include it in your project! -->
         <div class="custom-template">
             <div class="title">Settings</div>
             <div class="custom-content">

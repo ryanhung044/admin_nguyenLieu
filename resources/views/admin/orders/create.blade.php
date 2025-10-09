@@ -12,11 +12,11 @@
                     </div>
                     <div class="mb-2">
                         <input type="text" id="phone" class="form-control" placeholder="Số điện thoại" required
-                            value="{{  '' }}">
+                            value="{{ '' }}">
                     </div>
                     <div class="mb-2">
                         <input type="text" id="address" class="form-control" placeholder="Địa chỉ" required
-                            value="{{  '' }}">
+                            value="{{ '' }}">
                     </div>
                     <div class="mb-2">
                         <select id="payment_method" class="form-control" required>
@@ -24,6 +24,19 @@
                             <option value="bank_transfer">Chuyển khoản</option>
                         </select>
                     </div>
+
+                    <div class="mb-2 d-flex gap-2">
+                        <input type="text" id="voucher_code" class="form-control" placeholder="Nhập mã giảm giá">
+                        <button type="button" id="apply-voucher" class="btn btn-outline-primary btn-sm">Áp dụng</button>
+                        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal"
+                            data-bs-target="#createVoucherModal">
+                            + Tạo mã
+                        </button>
+                    </div>
+                    <div id="voucher-info" class="text-success small mb-2"></div>
+
+                    <div id="voucher-info" class="text-success small mb-2"></div>
+
                     {{-- <input type="hidden" id="user_id" value="{{ $conversation->user->id }}"> --}}
 
                     <div class="card mt-3">
@@ -32,10 +45,23 @@
                             <div id="cart-items" style="overflow: auto">
                                 <p class="text-muted">Chưa có sản phẩm nào trong giỏ.</p>
                             </div>
-                            <div class="mt-3 d-flex justify-content-between">
+                            {{-- <div class="mt-3 d-flex justify-content-between">
                                 <strong>Tổng cộng: <span id="cart-total">0 đ</span></strong>
                                 <button class="btn btn-success btn-sm" id="checkout-btn">Đặt hàng</button>
+                            </div> --}}
+                            <div class="d-flex justify-content-between">
+                                <span>Tạm tính:</span>
+                                <strong><span id="subtotal">0 đ</span></strong>
                             </div>
+                            <div class="d-flex justify-content-between text-success">
+                                <span>Giảm giá:</span>
+                                <strong><span id="discount">0 đ</span></strong>
+                            </div>
+                            <div class="d-flex justify-content-between border-top mt-1 pt-1">
+                                <strong>Tổng cộng:</strong>
+                                <strong><span id="cart-total">0 đ</span></strong>
+                            </div>
+                            <button class="btn btn-success btn-sm mt-2 w-100" id="checkout-btn">Đặt hàng</button>
                         </div>
                     </div>
                 </form>
@@ -104,6 +130,45 @@
 
     <script>
         let cart = [];
+        let appliedVoucher = null;
+        let discountAmount = 0;
+
+        // Gọi API kiểm tra mã giảm giá
+        document.getElementById('apply-voucher').addEventListener('click', () => {
+            const code = document.getElementById('voucher_code').value.trim();
+            if (!code) return alert('Vui lòng nhập mã giảm giá');
+
+            const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+            fetch(`/api/vouchers/check`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        code,
+                        order_amount: subtotal
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        appliedVoucher = data.voucher;
+                        discountAmount = Number(data.discount);
+
+                        let discountText = appliedVoucher.type === 'percentage' ?
+                            `Giảm ${Number(appliedVoucher.discount_value)}%` :
+                            `Giảm ${Number(discountAmount).toLocaleString()} đ`;
+
+                        document.getElementById('voucher-info').textContent =
+                            `Mã "${code}" được áp dụng - ${discountText}`;
+                        renderCart();
+                    }
+
+                })
+                .catch(() => alert('Không thể kiểm tra mã giảm giá'));
+        });
 
         function renderCart() {
             const container = document.getElementById('cart-items');
@@ -130,26 +195,60 @@
                                 <tbody>
                                     ${cart.map((item, i) =>
                                     `<tr>
-                                        <td>${item.name}</td>
-                                        <td>${item.price.toLocaleString()} đ</td>
-                                        <td>
-                                            <input type="number" class="form-control form-control-sm update-qty" 
-                                                    data-index="${i}" min="1" value="${item.quantity}" style="min-width: 50px;">
-                                        </td>
-                                        <td>${(item.price * item.quantity).toLocaleString()} đ</td>
-                                        <td>
-                                            <button class="btn btn-danger btn-sm remove-item" data-index="${i}">
-                                                Xóa
-                                            </button>
-                                        </td>
-                                    </tr>`).join('')}
+                                                                                                                <td>${item.name}</td>
+                                                                                                                <td>${item.price.toLocaleString()} đ</td>
+                                                                                                                <td>
+                                                                                                                    <input type="number" class="form-control form-control-sm update-qty" 
+                                                                                                                            data-index="${i}" min="1" value="${item.quantity}" style="min-width: 50px;">
+                                                                                                                </td>
+                                                                                                                <td>${(item.price * item.quantity).toLocaleString()} đ</td>
+                                                                                                                <td>
+                                                                                                                    <button class="btn btn-danger btn-sm remove-item" data-index="${i}">
+                                                                                                                        Xóa
+                                                                                                                    </button>
+                                                                                                                </td>
+                                                                                                            </tr>`).join('')}
                                 </tbody>
                                 `;
             container.appendChild(table);
 
             // Cập nhật tổng
-            const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-            document.getElementById('cart-total').textContent = total.toLocaleString() + ' đ';
+            // const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            // document.getElementById('cart-total').textContent = total.toLocaleString() + ' đ';
+            const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+            // --- TÍNH GIẢM GIÁ ---
+            let discount = 0;
+
+            if (appliedVoucher) {
+                if (appliedVoucher.type === 'percentage') {
+                    discount = Math.floor(subtotal * (appliedVoucher.discount_value / 100));
+
+                    if (appliedVoucher.max_discount && discount > appliedVoucher.max_discount) {
+                        discount = appliedVoucher.max_discount;
+                    }
+
+                    // Nếu có đơn hàng tối thiểu
+                    if (appliedVoucher.min_order_amount && subtotal < appliedVoucher.min_order_amount) {
+                        discount = 0;
+                        document.getElementById('voucher-info').textContent =
+                            `Đơn hàng chưa đạt mức tối thiểu (${Number(appliedVoucher.min_order_amount).toLocaleString()} đ) để áp dụng mã.`;
+                    }
+                } else if (appliedVoucher.type === 'fixed') {
+                    discount = Number(appliedVoucher.discount_value);
+                }
+
+                // Không cho giảm vượt quá tổng tiền
+                if (discount > subtotal) discount = subtotal;
+            }
+
+            const total = subtotal - discount;
+
+            // --- CẬP NHẬT HIỂN THỊ ---
+            document.getElementById('subtotal').textContent = Number(subtotal).toLocaleString() + ' đ';
+            document.getElementById('discount').textContent = Number(discount).toLocaleString() + ' đ';
+            document.getElementById('cart-total').textContent = Number(total).toLocaleString() + ' đ';
+
 
             // Gán event update & remove
             document.querySelectorAll('.update-qty').forEach(input => {
@@ -218,7 +317,7 @@
         document.getElementById('checkout-btn').addEventListener('click', () => {
             event.preventDefault(); // ❌ Ngăn form submit mặc định
             console.log(cart.length);
-            
+
             if (cart.length === 0) return alert('Giỏ hàng trống!');
 
             const orderData = {
@@ -227,6 +326,8 @@
                 address: document.getElementById('address').value,
                 payment_method: document.getElementById('payment_method').value,
                 // user_id: document.getElementById('user_id').value,
+                voucher: appliedVoucher ? appliedVoucher.code : null, // thêm dòng này
+
                 cart: cart.map(item => ({
                     id: item.id,
                     variant_id: item.variantId || null,
@@ -254,9 +355,9 @@
                     if (data.success) {
                         alert("Đặt hàng thành công! Mã đơn: " + data.order_id);
                         cart = []; // clear giỏ hàng
+                        appliedVoucher = null;
+                        discountAmount = 0;
                         renderCart();
-
-
                     } else {
                         alert("Lỗi: " + data.message);
                     }
@@ -267,6 +368,7 @@
                 });
         });
     </script>
+
 
     <style>
         .card:hover {
@@ -291,4 +393,116 @@
             flex-direction: column;
         }
     </style>
+
+    <!-- Modal tạo mã giảm giá -->
+    <div class="modal fade" id="createVoucherModal" tabindex="-1" aria-labelledby="createVoucherLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createVoucherLabel">Tạo mã giảm giá</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createVoucherForm">
+                        <div class="mb-3">
+                            <label for="code" class="form-label">Mã giảm giá</label>
+                            <input type="text" id="code" name="code" class="form-control"
+                                placeholder="VD: SALE10" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="discount_type" class="form-label">Loại giảm giá</label>
+                            <select id="discount_type" name="discount_type" class="form-select" required>
+                                <option value="percentage">Phần trăm (%)</option>
+                                <option value="fixed">Số tiền cố định</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="discount_value" class="form-label">Giá trị giảm</label>
+                            <input type="number" id="discount_value" name="discount_value" class="form-control"
+                                placeholder="Nhập giá trị" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="min_order_amount" class="form-label">Giá trị đơn tối thiểu</label>
+                            <input type="number" id="min_order_amount" name="min_order_amount" class="form-control"
+                                placeholder="VD: 100000">
+                        </div>
+                        <div class="mb-3">
+                            <label for="expiry_date" class="form-label">Ngày hết hạn</label>
+                            <input type="date" id="expiry_date" name="expiry_date" class="form-control" required>
+                        </div>
+                        <button type="button" class="btn btn-success w-100" id="createVoucherBtn">Tạo mã</button>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const createBtn = document.getElementById('createVoucherBtn');
+            if (!createBtn) return; // tránh lỗi nếu chưa render modal
+
+            createBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                const formData = {
+                    code: document.getElementById('code').value.trim() || 'SALE' + Math.floor(Math
+                        .random() * 10000),
+                    type: document.getElementById('discount_type').value,
+                    discount_value: document.getElementById('discount_value').value,
+                    min_order_amount: document.getElementById('min_order_amount').value || 0,
+                    end_date: document.getElementById('expiry_date').value,
+                };
+
+                fetch('/api/vouchers', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            const voucher = data.voucher;
+                            alert('✅ Mã "' + voucher.code + '" đã được tạo và áp dụng ngay.');
+
+                            const modal = bootstrap.Modal.getInstance(document.getElementById(
+                                'createVoucherModal'));
+                            modal.hide();
+
+                            document.getElementById('voucher_code').value = voucher.code;
+
+                            const subtotal = cart.reduce((sum, item) => sum + item.price * item
+                                .quantity, 0);
+                            let discountValue = voucher.type === 'percentage' ?
+                                Math.floor(subtotal * (voucher.discount_value / 100)) :
+                                Number(voucher.discount_value);
+
+
+                            appliedVoucher = voucher;
+                            discountAmount = discountValue;
+
+                            let discountText = voucher.type === 'percentage' ?
+                                `Giảm ${voucher.discount_value}%` :
+                                `Giảm ${Number(voucher.discount_value).toLocaleString()} đ`;
+
+                            document.getElementById('voucher-info').textContent =
+                                `Áp dụng mã "${voucher.code}" - ${discountText}`;
+
+
+                            renderCart();
+                        } else {
+                            alert('⚠️ ' + data.message);
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        alert('Lỗi khi tạo mã.');
+                    });
+            });
+        });
+    </script>
 @endsection

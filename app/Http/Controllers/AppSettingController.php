@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateappSettingRequest;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\ZaloToken;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -186,6 +187,7 @@ class AppSettingController extends Controller
             ->limit(7)
             ->get();
         $orders = Order::with('items.product', 'referrer')->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->orderby('status')->paginate(7);
+        
         return view('admin.index', compact(
             'totalOrders',
             'totalRevenue',

@@ -431,7 +431,9 @@
                                             </button>
                                             {{ $order->name }}
                                         </th>
-                                        <td class="text-end">{{ $order->created_at->setTimezone('Asia/Ho_Chi_Minh')->format('d - m - Y, g.iA') }}</td>
+                                        <td class="text-end">
+                                            {{ $order->created_at->setTimezone('Asia/Ho_Chi_Minh')->format('d - m - Y, g.iA') }}
+                                        </td>
                                         <td class="text-end">{{ number_format($order->total, 0, ',', '.') }}đ</td>
                                         @php
                                             $statusLabels = [
