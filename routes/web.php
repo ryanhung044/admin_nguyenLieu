@@ -108,6 +108,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
         Route::get('/zalo/login', [ZaloController::class, 'redirectToZalo'])->name('zalo.login');
         Route::get('/zalo/callback', [ZaloController::class, 'handleCallback'])->name('zalo.callback');
         Route::post('/import-products', [ProductController::class, 'importProductsFromExcel'])->name('import-products.upload');
+        Route::post('/categories/import', [ProductController::class, 'importCategoriesFromExcel'])->name('categories.import');
+        Route::post('/import-price', [ProductController::class, 'importProductVariantsFromExcel'])->name('import.price');
+
         Route::get('/import-products', function () {
             return view('import-products');
         });

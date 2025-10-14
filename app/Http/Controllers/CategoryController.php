@@ -36,24 +36,30 @@ class CategoryController extends Controller
         // Validate dữ liệu
         $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:categories,slug',
+            'slug' => 'nullable|string|max:255',
             'parent_category_id' => 'nullable|exists:categories,id',
             'description' => 'nullable|string',
         ]);
+        try {
+            // Xử lý slug trùng
+            $baseSlug = Str::slug($request->slug ?? $request->title);
+            $slug = $baseSlug;
+            $counter = 1;
+            while (Category::where('slug', $slug)->exists()) {
+                $slug = $baseSlug . '-' . $counter++;
+            }
+            Category::create([
+                'title' => $request->title,
+                'slug' => $slug,
+                'parent_category_id' => $request->parent_category_id,
+                'description' => $request->description,
+            ]);
 
-        // Tạo slug nếu chưa nhập
-        $slug = $request->slug ?? Str::slug($request->title);
-
-        // Lưu vào CSDL
-        Category::create([
-            'title' => $request->title,
-            'slug' => $slug,
-            'parent_category_id' => $request->parent_category_id,
-            'description' => $request->description,
-        ]);
-
-        return redirect()->route('admin.categories.index')
-            ->with('success', 'Chuyên mục đã được thêm thành công!');
+            return redirect()->route('admin.categories.index')
+                ->with('success', 'Chuyên mục đã được thêm thành công!');
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Có lỗi xảy ra');
+        }
     }
 
 
@@ -81,21 +87,31 @@ class CategoryController extends Controller
     {
         $request->validate([
             'title' => 'required|string|max:255',
-            'slug' => 'nullable|string|max:255|unique:categories,slug,' . $category->id,
+            'slug' => 'nullable|string|max:255' . $category->id,
             'parent_category_id' => 'nullable|exists:categories,id|not_in:' . $category->id,
             'description' => 'nullable|string',
         ]);
-    
-        $slug = $request->slug ?? Str::slug($request->title);
-    
-        $category->update([
-            'title' => $request->title,
-            'slug' => $slug,
-            'parent_category_id' => $request->parent_category_id,
-            'description' => $request->description,
-        ]);
-    
-        return redirect()->route('admin.categories.index')->with('success', 'Chuyên mục đã được cập nhật!');
+        try {
+
+            $baseSlug = Str::slug($request->slug ?? $request->title);
+            $slug = $baseSlug;
+            $counter = 1;
+            while (Category::where('slug', $slug)->exists()) {
+                $slug = $baseSlug . '-' . $counter++;
+            }
+
+            $category->update([
+                'title' => $request->title,
+                'slug' => $slug,
+                'parent_category_id' => $request->parent_category_id,
+                'description' => $request->description,
+            ]);
+
+            return redirect()->route('admin.categories.index')->with('success', 'Chuyên mục đã được cập nhật!');
+        } catch (\Throwable $th) {
+            //throw $th;
+            return back()->withInput()->with('error', 'Có lỗi xảy ra');
+        }
     }
 
     /**

@@ -8,7 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class Product extends Model
 {
     use HasFactory;
+    // public $incrementing = false; // Giữ nguyên ID từ file Excel
+    // protected $keyType = 'int'; // hoặc 'string' nếu ID không phải số
+
     protected $fillable = [
+        // 'id',
         'name',
         'summary',
         'content',

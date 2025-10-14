@@ -40,7 +40,6 @@ class AppSettingController extends Controller
      */
     public function store(Request $request)
     {
-        return $request;
         $validated = $request->validate([
             'app_name' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:255',
@@ -55,25 +54,28 @@ class AppSettingController extends Controller
             'favicon_path' => 'nullable|image|max:1024',
             'donated' => 'nullable',
         ]);
+        try {
+            $setting = AppSetting::first() ?? new AppSetting();
 
-        $setting = AppSetting::first() ?? new AppSetting();
+            $setting->fill($validated);
 
-        $setting->fill($validated);
+            // Xử lý upload file nếu có
+            if ($request->hasFile('logo_path')) {
+                $setting->logo_path = $request->file('logo_path')->store('uploads/logo', 'public');
+            }
+            if ($request->hasFile('banner_path')) {
+                $setting->banner_path = $request->file('banner_path')->store('uploads/banner', 'public');
+            }
+            if ($request->hasFile('favicon_path')) {
+                $setting->favicon_path = $request->file('favicon_path')->store('uploads/favicon', 'public');
+            }
 
-        // Xử lý upload file nếu có
-        if ($request->hasFile('logo_path')) {
-            $setting->logo_path = $request->file('logo_path')->store('uploads/logo', 'public');
+            $setting->save();
+
+            return redirect()->back()->with('success', 'Cập nhật thông tin ứng dụng thành công!');
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi thêm mới: ' . $e->getMessage());
         }
-        if ($request->hasFile('banner_path')) {
-            $setting->banner_path = $request->file('banner_path')->store('uploads/banner', 'public');
-        }
-        if ($request->hasFile('favicon_path')) {
-            $setting->favicon_path = $request->file('favicon_path')->store('uploads/favicon', 'public');
-        }
-
-        $setting->save();
-
-        return redirect()->back()->with('success', 'Cập nhật thông tin ứng dụng thành công!');
     }
 
 
@@ -113,25 +115,29 @@ class AppSettingController extends Controller
             'favicon_path' => 'nullable|image|max:1024',
             'donated' => 'nullable',
         ]);
+        try {
 
-        $setting = AppSetting::first() ?? new AppSetting();
+            $setting = AppSetting::first() ?? new AppSetting();
 
-        $setting->fill($validated);
+            $setting->fill($validated);
 
-        // Xử lý upload file nếu có
-        if ($request->hasFile('logo_path')) {
-            $setting->logo_path = $request->file('logo_path')->store('uploads/logo', 'public');
+            // Xử lý upload file nếu có
+            if ($request->hasFile('logo_path')) {
+                $setting->logo_path = $request->file('logo_path')->store('uploads/logo', 'public');
+            }
+            if ($request->hasFile('banner_path')) {
+                $setting->banner_path = $request->file('banner_path')->store('uploads/banner', 'public');
+            }
+            if ($request->hasFile('favicon_path')) {
+                $setting->favicon_path = $request->file('favicon_path')->store('uploads/favicon', 'public');
+            }
+
+            $setting->save();
+
+            return redirect()->back()->with('success', 'Cập nhật thông tin ứng dụng thành công!');
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
-        if ($request->hasFile('banner_path')) {
-            $setting->banner_path = $request->file('banner_path')->store('uploads/banner', 'public');
-        }
-        if ($request->hasFile('favicon_path')) {
-            $setting->favicon_path = $request->file('favicon_path')->store('uploads/favicon', 'public');
-        }
-
-        $setting->save();
-
-        return redirect()->back()->with('success', 'Cập nhật thông tin ứng dụng thành công!');
     }
 
     /**
@@ -145,60 +151,65 @@ class AppSettingController extends Controller
 
     public function openApp()
     {
-        $totalOrders = Order::count();
+        try {
 
-        // Tính tổng doanh thu từ cột `total`
-        $totalRevenue = Order::sum('total');
+            $totalOrders = Order::count();
 
-        $totalUsers = User::count();
-        $todayRevenue = Order::whereDate('created_at', Carbon::today())->sum('total');
+            // Tính tổng doanh thu từ cột `total`
+            $totalRevenue = Order::sum('total');
 
-        // Lấy tổng số sản phẩm
-        $totalSuccessfulOrders = Order::where('status', 'completed')->count();
+            $totalUsers = User::count();
+            $todayRevenue = Order::whereDate('created_at', Carbon::today())->sum('total');
 
-        $days = 7; // 7 ngày gần nhất
+            // Lấy tổng số sản phẩm
+            $totalSuccessfulOrders = Order::where('status', 'completed')->count();
 
-        $revenueData = Order::selectRaw('DATE(created_at) as date, SUM(total) as total')
-            // ->where('status', 'completed') // hoặc 'paid' tuỳ hệ thống
-            ->whereDate('created_at', '>=', Carbon::now()->subDays($days))
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
+            $days = 7; // 7 ngày gần nhất
 
-        // Tạo mảng dữ liệu: labels (ngày), values (doanh thu)
-        $labels = [];
-        $values = [];
+            $revenueData = Order::selectRaw('DATE(created_at) as date, SUM(total) as total')
+                // ->where('status', 'completed') // hoặc 'paid' tuỳ hệ thống
+                ->whereDate('created_at', '>=', Carbon::now()->subDays($days))
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get();
 
-        for ($i = $days; $i >= 0; $i--) {
-            $date = Carbon::now()->subDays($i)->toDateString();
-            $labels[] = $date;
+            // Tạo mảng dữ liệu: labels (ngày), values (doanh thu)
+            $labels = [];
+            $values = [];
 
-            $dayData = $revenueData->firstWhere('date', $date);
-            $values[] = $dayData ? (int) $dayData->total : 0;
+            for ($i = $days; $i >= 0; $i--) {
+                $date = Carbon::now()->subDays($i)->toDateString();
+                $labels[] = $date;
+
+                $dayData = $revenueData->firstWhere('date', $date);
+                $values[] = $dayData ? (int) $dayData->total : 0;
+            }
+            $topProducts = DB::table('order_items')
+                ->select('product_id', 'product_name', DB::raw('SUM(quantity) as total_sold'))
+                ->groupBy('product_id', 'product_name')
+                ->orderByDesc('total_sold')
+                ->limit(10)
+                ->get();
+            $topUsers = DB::table('users')->where('role', 'user')->orderByDesc('balance')
+                ->orderByDesc('created_at')
+                ->limit(7)
+                ->get();
+            $orders = Order::with('items.product', 'referrer')->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->orderby('status')->paginate(7);
+
+            return view('admin.index', compact(
+                'totalOrders',
+                'totalRevenue',
+                'totalUsers',
+                'totalSuccessfulOrders',
+                'labels',
+                'values',
+                'todayRevenue',
+                'topProducts',
+                'topUsers',
+                'orders'
+            ));
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
-        $topProducts = DB::table('order_items')
-            ->select('product_id', 'product_name', DB::raw('SUM(quantity) as total_sold'))
-            ->groupBy('product_id', 'product_name')
-            ->orderByDesc('total_sold')
-            ->limit(10)
-            ->get();
-        $topUsers = DB::table('users')->where('role', 'user')->orderByDesc('balance')
-            ->orderByDesc('created_at')
-            ->limit(7)
-            ->get();
-        $orders = Order::with('items.product', 'referrer')->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")->orderby('status')->paginate(7);
-        
-        return view('admin.index', compact(
-            'totalOrders',
-            'totalRevenue',
-            'totalUsers',
-            'totalSuccessfulOrders',
-            'labels',
-            'values',
-            'todayRevenue',
-            'topProducts',
-            'topUsers',
-            'orders'
-        ));
     }
 }

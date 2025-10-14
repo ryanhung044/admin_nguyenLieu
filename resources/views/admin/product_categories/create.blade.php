@@ -7,7 +7,7 @@
 <form action="{{ route('admin.product-categories.store') }}" method="POST" enctype="multipart/form-data">
     @csrf
     <div class="mb-3">
-        <label for="name" class="form-label">Tên danh mục</label>
+        <label for="name" class="form-label required">Tên danh mục</label>
         <input type="text" class="form-control @error('name') is-invalid @enderror" id="name" name="name" value="{{ old('name') }}" required>
         @error('name')
         <div class="invalid-feedback">{{ $message }}</div>

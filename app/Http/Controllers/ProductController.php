@@ -9,7 +9,9 @@ use App\Models\Attribute;
 use App\Models\AttributeValue;
 use App\Models\ProductCategory;
 use App\Models\ProductGroup;
+use App\Models\ProductVariant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -21,35 +23,35 @@ class ProductController extends Controller
      * Display a listing of the resource.
      */
     public function index(Request $request)
-{
-    $query = Product::with('category');
+    {
+        $query = Product::with('category');
 
-    // Lọc theo danh mục
-    if ($request->category && $request->category !== 'all') {
-        $query->where('category_id', $request->category);
+        // Lọc theo danh mục
+        if ($request->category && $request->category !== 'all') {
+            $query->where('category_id', $request->category);
+        }
+
+        // Lọc theo từ khóa
+        if ($request->search) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        // Lọc theo khoảng giá
+        if ($request->min_price) {
+            $query->where('sale_price', '>=', $request->min_price);
+        }
+        if ($request->max_price) {
+            $query->where('sale_price', '<=', $request->max_price);
+        }
+
+        // Số lượng sản phẩm mỗi trang
+        $perPage = $request->input('per_page', 10);
+
+        $products = $query->orderByDesc('id')->paginate($perPage);
+        $categories = ProductCategory::all();
+
+        return view('admin.products.index', compact('products', 'categories'));
     }
-
-    // Lọc theo từ khóa
-    if ($request->search) {
-        $query->where('name', 'like', '%' . $request->search . '%');
-    }
-
-    // Lọc theo khoảng giá
-    if ($request->min_price) {
-        $query->where('sale_price', '>=', $request->min_price);
-    }
-    if ($request->max_price) {
-        $query->where('sale_price', '<=', $request->max_price);
-    }
-
-    // Số lượng sản phẩm mỗi trang
-    $perPage = $request->input('per_page', 10);
-
-    $products = $query->orderByDesc('id')->paginate($perPage);
-    $categories = ProductCategory::all();
-
-    return view('admin.products.index', compact('products', 'categories'));
-}
 
 
 
@@ -488,7 +490,7 @@ class ProductController extends Controller
 
     public function importProductsFromExcel(Request $request)
     {
-        ini_set('max_execution_time', 300); // 5 phút
+        ini_set('max_execution_time', 300);
         set_time_limit(300);
 
         $request->validate([
@@ -502,34 +504,41 @@ class ProductController extends Controller
 
             $path = $request->file('file')->getRealPath();
             $rows = Excel::toArray([], $path)[0]; // Lấy sheet đầu tiên
-            $header = array_shift($rows); // Bỏ tiêu đề
+            $header = array_shift($rows); // Bỏ dòng tiêu đề
 
             $imported = 0;
             $failed = 0;
 
             foreach ($rows as $index => $row) {
                 try {
-                    // Nếu không có tên thì bỏ qua
-                    if (empty($row[0])) {
+                    $productId = trim($row[0] ?? ''); // Product ID
+                    $catId = trim($row[1] ?? '');     // Danh mục
+                    $productName = trim($row[2] ?? ''); // Tên sản phẩm
+
+                    if (empty($productId) || empty($productName)) {
                         continue;
                     }
 
-                    $productName = trim($row[0]);
+                    // Nếu sản phẩm đã tồn tại -> bỏ qua
+                    if (Product::find($productId)) {
+                        Log::info("⚠️ Bỏ qua sản phẩm ID {$productId} vì đã tồn tại.");
+                        continue;
+                    }
 
-                    // Lấy danh sách ảnh hợp lệ
+                    // Lấy danh sách ảnh hợp lệ (từ cột 3 đến 10)
                     $imageUrls = [];
-                    for ($i = 1; $i <= 8; $i++) {
+                    for ($i = 3; $i <= 10; $i++) {
                         $url = trim($row[$i] ?? '');
                         if ($url && Str::startsWith($url, ['http://', 'https://'])) {
                             $imageUrls[] = $url;
                         }
                     }
 
-                    // Lấy mô tả
-                    $description = $row[9] ?? '';
-                    $summary = $row[10] ?? '';
+                    // Lấy mô tả (cột 11)
+                    $description = $row[11] ?? '';
+                    $summary = mb_substr(strip_tags($description), 0, 150); // tạo tóm tắt ngắn
 
-                    // Xử lý slug trùng
+                    // Tạo slug duy nhất
                     $baseSlug = Str::slug($productName) ?: 'product';
                     $slug = $baseSlug;
                     $counter = 1;
@@ -554,6 +563,7 @@ class ProductController extends Controller
 
                     // Tạo sản phẩm
                     $product = Product::create([
+                        'id' => $productId,
                         'name' => $productName,
                         'slug' => $slug,
                         'sku' => 'SKU-' . strtoupper(Str::random(6)),
@@ -564,7 +574,7 @@ class ProductController extends Controller
                         'price' => 0,
                         'sale_price' => 0,
                         'commission_rate' => 0,
-                        'category_id' => 3, // tất cả vào danh mục id = 1
+                        'category_id' => $catId ?: null,
                     ]);
 
                     // Ảnh phụ
@@ -580,7 +590,6 @@ class ProductController extends Controller
                                 }
                             } catch (\Exception $e) {
                                 Log::warning("Không tải được ảnh phụ: {$productName}");
-                                continue;
                             }
                         }
 
@@ -596,10 +605,168 @@ class ProductController extends Controller
                     $failed++;
                 }
             }
-            return redirect()->back()->with('success', "✅ Import hoàn tất: {$imported} thành công, {$failed} lỗi.");
+
+            return redirect()->back()->with('success', "✅ Import hoàn tất: {$imported} sản phẩm thành công, {$failed} lỗi.");
         } catch (\Throwable $th) {
             Log::error('❌ Lỗi khi import: ' . $th->getMessage());
             return redirect()->back()->with('error', 'Lỗi khi import: ' . $th->getMessage());
+        }
+    }
+
+
+    public function importCategoriesFromExcel(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv',
+        ]);
+
+        try {
+            if (!$request->hasFile('file')) {
+                return back()->with('error', 'Không tìm thấy file upload!');
+            }
+
+            $path = $request->file('file')->getRealPath();
+            $rows = Excel::toArray([], $path)[0]; // Lấy sheet đầu tiên
+
+            // Bỏ dòng tiêu đề
+            $header = array_shift($rows);
+
+            $imported = 0;
+            $failed = 0;
+
+            DB::beginTransaction();
+
+            foreach ($rows as $index => $row) {
+                try {
+                    $id = trim($row[0] ?? '');
+                    $name = trim($row[1] ?? '');
+
+                    if (empty($id) || empty($name)) {
+                        continue;
+                    }
+
+                    // Kiểm tra xem ID đã tồn tại chưa
+                    $exists = ProductCategory::find($id);
+                    if ($exists) {
+                        Log::info("⚠️ Bỏ qua vì ID {$id} đã tồn tại ({$name})");
+                        continue;
+                    }
+
+                    // Xử lý slug trùng
+                    $baseSlug = Str::slug($name) ?: 'category';
+                    $slug = $baseSlug;
+                    $counter = 1;
+                    while (ProductCategory::where('slug', $slug)->exists()) {
+                        $slug = $baseSlug . '-' . $counter++;
+                    }
+
+                    // Tạo mới danh mục (giữ nguyên ID)
+                    ProductCategory::create([
+                        'id' => $id,
+                        'name' => $name,
+                        'slug' => $slug,
+                        'parent_id' => null,
+                        'sort_order' => 0,
+                        'image' => null,
+                    ]);
+
+                    $imported++;
+                } catch (\Throwable $e) {
+                    Log::error("❌ Lỗi tại dòng {$index}: " . $e->getMessage());
+                    $failed++;
+                }
+            }
+
+            DB::commit();
+
+            return back()->with('success', "✅ Import hoàn tất: {$imported} danh mục thành công, {$failed} lỗi.");
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Log::error('❌ Lỗi khi import: ' . $th->getMessage());
+            return back()->with('error', 'Lỗi khi import: ' . $th->getMessage());
+        }
+    }
+
+    public function importProductVariantsFromExcel(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv',
+        ]);
+
+        try {
+            $path = $request->file('file')->getRealPath();
+            $rows = Excel::toArray([], $path)[0];
+            $header = array_shift($rows); // Bỏ dòng tiêu đề
+
+            $imported = 0;
+            $failed = 0;
+
+            DB::beginTransaction();
+
+            foreach ($rows as $index => $row) {
+                try {
+                    $productId = trim($row[0] ?? '');
+                    $salePrice = (float)($row[1] ?? 0);
+                    $price = (float)($row[2] ?? 0);
+                    $stock = (int)($row[3] ?? 0);
+                    $variationText = trim($row[4] ?? '');
+
+                    if (empty($productId)) continue;
+
+                    $product = Product::find($productId);
+                    if (!$product) {
+                        Log::warning("❌ Không tìm thấy sản phẩm ID {$productId}");
+                        continue;
+                    }
+
+                    // Nếu sản phẩm chưa có biến thể thì cập nhật giá tổng thể từ dòng đầu tiên
+                    if (!ProductVariant::where('product_id', $productId)->exists()) {
+                        $product->update([
+                            'price' => $price,
+                            'sale_price' => $salePrice,
+                            'stock' => $stock,
+                        ]);
+                    }
+
+                    // Tạo biến thể (mỗi dòng = 1 biến thể)
+                    $variant = ProductVariant::create([
+                        'product_id' => $productId,
+                        'price' => $price,
+                        'sale_price' => $salePrice,
+                        'stock' => $stock,
+                    ]);
+
+                    // Nếu có tên biến thể (vd: “vàng đục - lõi giấy”)
+                    if (!empty($variationText)) {
+                        $attributes = preg_split('/[-,]+/', $variationText);
+                        foreach ($attributes as $attrName) {
+                            $attrName = trim($attrName);
+                            if ($attrName === '') continue;
+
+                            // Giả sử bạn có sẵn Attribute “Màu sắc” hoặc “Loại” (ví dụ id = 1)
+                            // Có thể mở rộng logic nếu bạn muốn phân loại khác nhau
+                            $attributeValue = AttributeValue::firstOrCreate([
+                                'attribute_id' => 1, // ID của thuộc tính chung (ví dụ "Phân loại")
+                                'value' => $attrName,
+                            ]);
+
+                            $variant->attributeValues()->attach($attributeValue->id);
+                        }
+                    }
+
+                    $imported++;
+                } catch (\Throwable $e) {
+                    Log::error("❌ Lỗi tại dòng {$index}: " . $e->getMessage());
+                    $failed++;
+                }
+            }
+
+            DB::commit();
+            return back()->with('success', "✅ Import xong: {$imported} biến thể, {$failed} lỗi.");
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Log::error('❌ Lỗi import: ' . $th->getMessage());
+            return back()->with('error', 'Lỗi khi import: ' . $th->getMessage());
         }
     }
 }

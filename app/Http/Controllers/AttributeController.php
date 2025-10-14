@@ -31,18 +31,21 @@ class AttributeController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'attribute_name' => 'required|string|max:255',
-        ]);
+        try {
+            $request->validate([
+                'attribute_name' => 'required|string|max:255',
+            ]);
 
-        // Lưu thuộc tính mới vào bảng attributes
-        $attribute = new Attribute();
-        $attribute->name = $request->input('attribute_name');
-        $attribute->save();
+            // Lưu thuộc tính mới vào bảng attributes
+            $attribute = new Attribute();
+            $attribute->name = $request->input('attribute_name');
+            $attribute->save();
 
-        // Trả về thông báo thành công
-        return redirect()->back()->with('success', 'Thêm thuộc tính và giá trị thành công!');
-
+            // Trả về thông báo thành công
+            return redirect()->back()->with('success', 'Thêm thuộc tính và giá trị thành công!');
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi thêm mới: ' . $e->getMessage());
+        }
     }
 
     /**

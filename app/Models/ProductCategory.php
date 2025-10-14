@@ -8,7 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class ProductCategory extends Model
 {
     use HasFactory;
+        public $incrementing = false; // ❗ Không tự tăng ID
+    protected $keyType = 'int'; // hoặc 'string' nếu ID không phải số
     protected $fillable = [
+        // 'id',
         'name',
         'slug',
         'parent_id',

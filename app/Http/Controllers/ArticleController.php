@@ -35,27 +35,31 @@ class ArticleController extends Controller
      */
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'title' => 'required|string|max:255',
-            'summary' => 'nullable|string|max:1000',
-            'content' => 'nullable|string',
-            'slug' => 'nullable|string|unique:articles,slug',
-            'image' => 'nullable|image',
-            'category_id' => 'nullable|exists:categories,id',
-        ]);
+        try {
+            $data = $request->validate([
+                'title' => 'required|string|max:255',
+                'summary' => 'nullable|string|max:1000',
+                'content' => 'nullable|string',
+                'slug' => 'nullable|string|unique:articles,slug',
+                'image' => 'nullable|image',
+                'category_id' => 'nullable|exists:categories,id',
+            ]);
 
-        // Tạo slug nếu không có
-        $data['slug'] = $data['slug'] ?? Str::slug($data['title']);
+            // Tạo slug nếu không có
+            $data['slug'] = $data['slug'] ?? Str::slug($data['title']);
 
-        // Lưu ảnh đại diện
-        if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('articles', 'public');
+            // Lưu ảnh đại diện
+            if ($request->hasFile('image')) {
+                $data['image'] = $request->file('image')->store('articles', 'public');
+            }
+
+            // Tạo bài viết
+            $article = article::create($data);
+
+            return redirect()->route('admin.articles.index')->with('success', 'Thêm bài viết thành công!');
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi thêm mới: ' . $e->getMessage());
         }
-
-        // Tạo bài viết
-        $article = article::create($data);
-
-        return redirect()->route('admin.articles.index')->with('success', 'Thêm bài viết thành công!');
     }
 
 
@@ -97,31 +101,34 @@ class ArticleController extends Controller
             'published_at' => 'nullable|date',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
+        try {
+            // Update the article's attributes
+            $article->title = $validated['title'];
+            $article->summary = $validated['summary'];
+            $article->content = $validated['content'];
+            $article->slug = $validated['slug'] ?? $this->generateSlug($validated['title']); // Generate slug if not provided
+            $article->category_id = $validated['category_id'];
+            $article->published_at = $validated['published_at'];
 
-        // Update the article's attributes
-        $article->title = $validated['title'];
-        $article->summary = $validated['summary'];
-        $article->content = $validated['content'];
-        $article->slug = $validated['slug'] ?? $this->generateSlug($validated['title']); // Generate slug if not provided
-        $article->category_id = $validated['category_id'];
-        $article->published_at = $validated['published_at'];
+            // Handle image upload if a new image is provided
+            if ($request->hasFile('image')) {
+                // Delete the old image if exists
+                if ($article->image && Storage::exists('public/' . $article->image)) {
+                    Storage::delete('public/' . $article->image);
+                }
 
-        // Handle image upload if a new image is provided
-        if ($request->hasFile('image')) {
-            // Delete the old image if exists
-            if ($article->image && Storage::exists('public/' . $article->image)) {
-                Storage::delete('public/' . $article->image);
+                // Store the new image
+                $article->image = $request->file('image')->store('articles', 'public');
             }
 
-            // Store the new image
-            $article->image = $request->file('image')->store('articles', 'public');
+            // Save the updated article
+            $article->save();
+
+            // Redirect back to the articles index page with a success message
+            return redirect()->route('admin.articles.index')->with('success', 'Bài viết đã được cập nhật thành công.');
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi cập nhật: ' . $e->getMessage());
         }
-
-        // Save the updated article
-        $article->save();
-
-        // Redirect back to the articles index page with a success message
-        return redirect()->route('admin.articles.index')->with('success', 'Bài viết đã được cập nhật thành công.');
     }
 
     /**
@@ -129,11 +136,16 @@ class ArticleController extends Controller
      */
     public function destroy(article $article)
     {
-        $article->delete();
-        return redirect()->route('admin.articles.index')->with('success', 'Xóa bài viết thành công');
+        try {
+            $article->delete();
+            return redirect()->route('admin.articles.index')->with('success', 'Xóa bài viết thành công');
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi xóa: ' . $e->getMessage());
+        }
     }
 
-    public function articleAffilate(){
+    public function articleAffilate()
+    {
         return view('article_affilate');
     }
 }

@@ -71,6 +71,27 @@
         .form-label {
             font-weight: bold
         }
+
+        .required::after {
+            content: " *";
+            color: red;
+            font-weight: bold;
+        }
+
+        /* Tự động thêm dấu sao đỏ cho label có input/select/textarea required phía sau */
+        label:has(+ input[required]),
+        label:has(+ select[required]),
+        label:has(+ textarea[required]) {
+            position: relative;
+        }
+
+        label:has(+ input[required])::after,
+        label:has(+ select[required])::after,
+        label:has(+ textarea[required])::after {
+            content: " *";
+            color: red;
+            font-weight: bold;
+        }
     </style>
 </head>
 
@@ -177,7 +198,12 @@
                                 <p>Quản lý tồn kho</p>
                             </a>
                         </li>
-
+                        <li class="nav-item {{ request()->routeIs('admin.vouchers.*') ? 'active' : '' }}">
+                            <a href="{{ route('admin.vouchers.index') }}">
+                                <i class="fas fa-tags"></i>
+                                <p>Quản lý mã giảm giá</p>
+                            </a>
+                        </li>
                         <!-- Sản phẩm -->
                         <li class="nav-section">
                             <span class="sidebar-mini-icon"><i class="fa fa-ellipsis-h"></i></span>
@@ -487,7 +513,11 @@
                             {{ session('success') }}
                         </div>
                     @endif
-
+                    @if (session('error'))
+                        <div class="alert alert-danger">
+                            {{ session('error') }}
+                        </div>
+                    @endif
 
                     @yield('content')
                 </div>

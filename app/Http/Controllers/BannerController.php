@@ -40,28 +40,26 @@ class BannerController extends Controller
             'end_date' => 'nullable|date|after:start_date',
             'status' => 'required|boolean',
         ]);
+        try {
 
-        $banner = new Banner();
-        $banner->title = $request->title;
-        $banner->position = $request->position;
-        $banner->link = $request->link;
-        $banner->start_date = $request->start_date;
-        $banner->end_date = $request->end_date;
-        $banner->status = $request->status;
+            $banner = new Banner();
+            $banner->title = $request->title;
+            $banner->position = $request->position;
+            $banner->link = $request->link;
+            $banner->start_date = $request->start_date;
+            $banner->end_date = $request->end_date;
+            $banner->status = $request->status;
 
-        // Xử lý file upload
-        if ($request->hasFile('image')) {
-            $banner->image = $request->file('image')->store('banners', 'public');
+            // Xử lý file upload
+            if ($request->hasFile('image')) {
+                $banner->image = $request->file('image')->store('banners', 'public');
+            }
+            $banner->save();
+
+            return redirect()->route('admin.banners.index')->with('success', 'Banner đã được thêm thành công.');
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi thêm mới: ' . $e->getMessage());
         }
-        // if ($request->hasFile('image')) {
-        //     $imageName = time() . '.' . $request->image->extension();
-        //     $request->image->move(public_path('images/banners'), $imageName);
-        //     $banner->image = 'images/banners/' . $imageName;
-        // }
-
-        $banner->save();
-
-        return redirect()->route('admin.banners.index')->with('success', 'Banner đã được thêm thành công.');
     }
 
     /**
@@ -77,8 +75,10 @@ class BannerController extends Controller
      */
     public function edit(banner $banner)
     {
-        return view('admin.banners.edit', compact('banner'));
-
+        if ($banner) {
+            return view('admin.banners.edit', compact('banner'));
+        }
+        return back()->withInput()->with('error', 'Không thể truy cập');
     }
 
     /**
@@ -95,48 +95,51 @@ class BannerController extends Controller
             'status' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
+        try {
 
-        $banner->title = $request->title;
-        $banner->link = $request->link;
-        $banner->position = $request->position;
-        $banner->start_date = $request->start_date;
-        $banner->end_date = $request->end_date;
-        $banner->status = $request->status;
+            $banner->title = $request->title;
+            $banner->link = $request->link;
+            $banner->position = $request->position;
+            $banner->start_date = $request->start_date;
+            $banner->end_date = $request->end_date;
+            $banner->status = $request->status;
 
-        // Nếu có ảnh mới thì lưu và xóa ảnh cũ
-        // if ($request->hasFile('image')) {
-        //     if ($banner->image) {
-        //         Storage::delete('public/' . $banner->image);
-        //     }
+            // Nếu có ảnh mới thì lưu và xóa ảnh cũ
+            // if ($request->hasFile('image')) {
+            //     if ($banner->image) {
+            //         Storage::delete('public/' . $banner->image);
+            //     }
 
-        //     $imagePath = $request->file('image')->store('banners', 'public');
-        //     $banner->image = $imagePath;
-        // }
+            //     $imagePath = $request->file('image')->store('banners', 'public');
+            //     $banner->image = $imagePath;
+            // }
 
-        if ($request->hasFile('image')) {
-            // Xóa ảnh cũ nếu có
-            if ($banner->image && Storage::exists('public/' . $banner->image)) {
-                Storage::delete('public/' . $banner->image);
+            if ($request->hasFile('image')) {
+                // Xóa ảnh cũ nếu có
+                if ($banner->image && Storage::exists('public/' . $banner->image)) {
+                    Storage::delete('public/' . $banner->image);
+                }
+                // Lưu ảnh mới
+                $banner->image = $request->file('image')->store('banners', 'public');
             }
-            // Lưu ảnh mới
-            $banner->image = $request->file('image')->store('banners', 'public');
+            // if ($request->hasFile('image')) {
+            //     // Xóa ảnh cũ nếu có
+            //     if ($banner->image && file_exists(public_path($banner->image))) {
+            //         unlink(public_path($banner->image));
+            //     }
+
+            //     // Lưu ảnh mới vào public/images/banners
+            //     $imageName = time() . '.' . $request->image->extension();
+            //     $request->image->move(public_path('images/banners'), $imageName);
+            //     $banner->image = 'images/banners/' . $imageName;
+            // }
+
+            $banner->save();
+
+            return redirect()->route('admin.banners.index')->with('success', 'Cập nhật banner thành công!');
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi cập nhật: ' . $e->getMessage());
         }
-        // if ($request->hasFile('image')) {
-        //     // Xóa ảnh cũ nếu có
-        //     if ($banner->image && file_exists(public_path($banner->image))) {
-        //         unlink(public_path($banner->image));
-        //     }
-        
-        //     // Lưu ảnh mới vào public/images/banners
-        //     $imageName = time() . '.' . $request->image->extension();
-        //     $request->image->move(public_path('images/banners'), $imageName);
-        //     $banner->image = 'images/banners/' . $imageName;
-        // }
-
-        $banner->save();
-
-        return redirect()->route('admin.banners.index')->with('success', 'Cập nhật banner thành công!');
-   
     }
 
     /**
@@ -144,22 +147,25 @@ class BannerController extends Controller
      */
     public function destroy(banner $banner)
     {
-        if ($banner->image && Storage::exists($banner->image)) {
-            Storage::delete($banner->image);
+        try {
+            if ($banner->image && Storage::exists($banner->image)) {
+                Storage::delete($banner->image);
+            }
+
+            $banner->delete();
+
+            return redirect()->route('admin.banners.index')->with('success', 'Đã xoá banner thành công.');
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi xóa: ' . $e->getMessage());
         }
-    
-        $banner->delete();
-    
-        return redirect()->route('admin.banners.index')->with('success', 'Đã xoá banner thành công.');
     }
 
     public function toggleStatus($id)
-{
-    $banner = Banner::findOrFail($id);
-    $banner->status = !$banner->status; // Đảo ngược trạng thái
-    $banner->save();
+    {
+        $banner = Banner::findOrFail($id);
+        $banner->status = !$banner->status; // Đảo ngược trạng thái
+        $banner->save();
 
-    return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
-}
-
+        return redirect()->back()->with('success', 'Cập nhật trạng thái thành công!');
+    }
 }

@@ -37,10 +37,13 @@ class VoucherController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
             'is_active' => 'required|boolean',
         ]);
+        try {
+            Voucher::create($validated);
 
-        Voucher::create($validated);
-
-        return redirect()->route('admin.vouchers.index')->with('success', 'Tạo voucher thành công.');
+            return redirect()->route('admin.vouchers.index')->with('success', 'Tạo voucher thành công.');
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi thêm mới: ' . $e->getMessage());
+        }
     }
 
     // Hiển thị chi tiết voucher
@@ -70,10 +73,14 @@ class VoucherController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
             'is_active' => 'required|boolean',
         ]);
+        try {
 
-        $voucher->update($validated);
+            $voucher->update($validated);
 
-        return redirect()->route('admin.vouchers.index')->with('success', 'Cập nhật voucher thành công.');
+            return redirect()->route('admin.vouchers.index')->with('success', 'Cập nhật voucher thành công.');
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi cập nhật: ' . $e->getMessage());
+        }
     }
 
     // Xóa voucher
