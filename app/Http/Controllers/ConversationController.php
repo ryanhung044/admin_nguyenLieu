@@ -8,6 +8,7 @@ use App\Http\Requests\StoreConversationRequest;
 use App\Http\Requests\UpdateConversationRequest;
 use App\Models\Message;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\User;
 use App\Models\ZaloToken;
 use Carbon\Carbon;
@@ -787,6 +788,7 @@ class ConversationController extends Controller
     public function show($id)
     {
         $products = Product::with('variants.attributeValues')->get();
+        $categories = ProductCategory::get();
         $conversation = Conversation::with('user')->findOrFail($id);
         if ($conversation->customer && $conversation->customer->avatar) {
             $avatar = $conversation->customer->avatar;
@@ -805,7 +807,7 @@ class ConversationController extends Controller
                 'admin_read_at' => now(),
             ]);
 
-        return view('admin.conversations.show', compact('conversation', 'messages', 'products'));
+        return view('admin.conversations.show', compact('conversation', 'messages', 'products','categories'));
     }
 
 

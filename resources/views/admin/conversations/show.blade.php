@@ -280,7 +280,8 @@
 
                     <div class="mb-2 d-flex gap-2">
                         <input type="text" id="voucher_code" class="form-control" placeholder="Nhập mã giảm giá">
-                        <button type="button" id="apply-voucher" class="btn btn-outline-primary btn-sm text-nowrap">Áp dụng</button>
+                        <button type="button" id="apply-voucher" class="btn btn-outline-primary btn-sm text-nowrap">Áp
+                            dụng</button>
                         <button type="button" class="btn btn-outline-success btn-sm text-nowrap" data-bs-toggle="modal"
                             data-bs-target="#createVoucherModal">
                             + Tạo mã
@@ -324,11 +325,58 @@
         </div>
         <div class="mb-2 d-none" id="productSection">
             <div class="card mt-3">
-                <div class="card-header">Danh sách sản phẩm</div>
+                {{-- <div class="card-header">Danh sách sản phẩm</div> --}}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Danh sách sản phẩm</h5>
+
+                    <div class="d-flex gap-2">
+                        <input type="text" id="filter-name" class="form-control form-control-sm"
+                            placeholder="Tìm theo tên" style="width: 200px;">
+
+                        <select id="filter-category" class="form-select form-select-sm" style="width: 150px;">
+                            <option value="">Tất cả danh mục</option>
+                            @foreach ($categories as $cat)
+                                <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                            @endforeach
+                        </select>
+
+                        <select id="filter-stock" class="form-select form-select-sm" style="width: 150px;">
+                            <option value="">Tất cả kho</option>
+                            <option value="in">Còn hàng</option>
+                            <option value="out">Hết hàng</option>
+                        </select>
+
+                        <button id="apply-filter" class="btn btn-outline-primary btn-sm">Lọc</button>
+                    </div>
+                </div>
+                <script>
+                    document.getElementById('apply-filter').addEventListener('click', () => {
+                        const name = document.getElementById('filter-name').value.trim().toLowerCase();
+                        const category = document.getElementById('filter-category')?.value;
+                        const stock = document.getElementById('filter-stock')?.value;
+
+                        document.querySelectorAll('.product-card').forEach(card => {
+                            const productName = card.dataset.name.toLowerCase();
+                            const productCategory = card.dataset.category;
+                            const productStock = parseInt(card.dataset.stock);
+
+                            let show = true;
+
+                            if (name && !productName.includes(name)) show = false;
+                            if (category && productCategory !== category) show = false;
+                            if (stock === 'in' && productStock <= 0) show = false;
+                            if (stock === 'out' && productStock > 0) show = false;
+
+                            card.style.display = show ? '' : 'none';
+                        });
+                    });
+                </script>
+
                 <div class="card-body" style="overflow-y:auto; max-height: 700px">
                     <div class="row g-3">
                         @foreach ($products as $product)
-                            <div class="col-md-4">
+                            <div class="col-md-4 product-card" data-name="{{ $product->name }}"
+                                data-category="{{ $product->category_id ?? '' }}" data-stock="{{ $product->stock }}">
                                 <div class="card h-100 shadow-sm">
                                     <img src="{{ $product->thumbnail ? asset('storage/' . $product->thumbnail) : asset('images/no-image.png') }}"
                                         class="card-img-top" alt="{{ $product->name }}"
@@ -396,7 +444,7 @@
         </div>
     </div>
 
-        <!-- Modal tạo mã giảm giá -->
+    <!-- Modal tạo mã giảm giá -->
     <div class="modal fade" id="createVoucherModal" tabindex="-1" aria-labelledby="createVoucherLabel"
         aria-hidden="true">
         <div class="modal-dialog">
@@ -440,7 +488,7 @@
             </div>
         </div>
     </div>
-<script>
+    <script>
         document.addEventListener('DOMContentLoaded', function() {
             const createBtn = document.getElementById('createVoucherBtn');
             if (!createBtn) return; // tránh lỗi nếu chưa render modal
@@ -822,7 +870,7 @@
                         document.getElementById('voucher-info').textContent =
                             `Mã "${code}" được áp dụng - ${discountText}`;
                         renderCart();
-                    }else{
+                    } else {
                         appliedVoucher = null
                         discountAmount = 0
                         document.getElementById('voucher-info').textContent = data.message;
@@ -858,19 +906,19 @@
                                 <tbody>
                                     ${cart.map((item, i) =>
                                     `<tr>
-                                                                                                                <td>${item.name}</td>
-                                                                                                                <td>${item.price.toLocaleString()} đ</td>
-                                                                                                                <td>
-                                                                                                                    <input type="number" class="form-control form-control-sm update-qty" 
-                                                                                                                            data-index="${i}" min="1" value="${item.quantity}" style="min-width: 50px;">
-                                                                                                                </td>
-                                                                                                                <td>${(item.price * item.quantity).toLocaleString()} đ</td>
-                                                                                                                <td>
-                                                                                                                    <button class="btn btn-danger btn-sm remove-item" data-index="${i}">
-                                                                                                                        Xóa
-                                                                                                                    </button>
-                                                                                                                </td>
-                                                                                                            </tr>`).join('')}
+                                                                                                                        <td>${item.name}</td>
+                                                                                                                        <td>${item.price.toLocaleString()} đ</td>
+                                                                                                                        <td>
+                                                                                                                            <input type="number" class="form-control form-control-sm update-qty" 
+                                                                                                                                    data-index="${i}" min="1" value="${item.quantity}" style="min-width: 50px;">
+                                                                                                                        </td>
+                                                                                                                        <td>${(item.price * item.quantity).toLocaleString()} đ</td>
+                                                                                                                        <td>
+                                                                                                                            <button class="btn btn-danger btn-sm remove-item" data-index="${i}">
+                                                                                                                                Xóa
+                                                                                                                            </button>
+                                                                                                                        </td>
+                                                                                                                    </tr>`).join('')}
                                 </tbody>
                                 `;
             container.appendChild(table);

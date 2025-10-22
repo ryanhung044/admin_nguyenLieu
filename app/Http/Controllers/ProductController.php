@@ -470,11 +470,37 @@ class ProductController extends Controller
         return view('layout2');
     }
 
-    public function indexStock()
+    public function indexStock(Request $request)
     {
-        $products = Product::with('category')->orderby('stock')->paginate(10);
-        return view('admin.products.inventory', compact('products'));
+        $query = Product::with('category');
+
+        // Lọc theo tên
+        if ($request->filled('keyword')) {
+            $query->where('name', 'like', '%' . $request->keyword . '%');
+        }
+
+        // Lọc theo danh mục
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        // Lọc theo tồn kho
+        if ($request->filled('stock_status')) {
+            if ($request->stock_status === 'in') {
+                $query->where('stock', '>', 0);
+            } elseif ($request->stock_status === 'out') {
+                $query->where('stock', '=', 0);
+            }
+        }
+
+        $perPage = $request->get('per_page', 10); // mặc định 10 sản phẩm mỗi trang
+        $products = $query->orderBy('stock')->paginate($perPage);
+
+        $categories = ProductCategory::all();
+
+        return view('admin.products.inventory', compact('products', 'categories'));
     }
+
 
     public function updateStock(Request $request, Product $product)
     {
@@ -591,31 +617,31 @@ class ProductController extends Controller
                      * 3️⃣ LƯU ẢNH
                      * ------------------------*/
                     // if ($imageUrl && Str::startsWith($imageUrl, ['http://', 'https://'])) {
-                        // try {
-                        //     $imageContent = @file_get_contents($imageUrl);
-                        //     Log::warning("imageContent: {$imageContent}");
+                    // try {
+                    //     $imageContent = @file_get_contents($imageUrl);
+                    //     Log::warning("imageContent: {$imageContent}");
 
-                        //     if ($imageContent !== false) {
-                        //         // Lấy tên file gốc (không gồm domain)
-                        //         $pathInfo = pathinfo(parse_url($imageUrl, PHP_URL_PATH));
-                        //         $extension = strtolower($pathInfo['extension'] ?? 'jpg');
+                    //     if ($imageContent !== false) {
+                    //         // Lấy tên file gốc (không gồm domain)
+                    //         $pathInfo = pathinfo(parse_url($imageUrl, PHP_URL_PATH));
+                    //         $extension = strtolower($pathInfo['extension'] ?? 'jpg');
 
-                        //         // Đảm bảo tên file an toàn
-                        //         $fileName = 'products/' . Str::slug($name) . '-' . uniqid() . '.' . $extension;
-                        //     Log::warning("ảnh: {$fileName}");
+                    //         // Đảm bảo tên file an toàn
+                    //         $fileName = 'products/' . Str::slug($name) . '-' . uniqid() . '.' . $extension;
+                    //     Log::warning("ảnh: {$fileName}");
 
-                        //         // Lưu file vào storage/public/products/
-                        //         Storage::disk('public')->put($fileName, $imageContent);
+                    //         // Lưu file vào storage/public/products/
+                    //         Storage::disk('public')->put($fileName, $imageContent);
 
-                        //         // ✅ Chỉ lưu đường dẫn tương đối, không lưu URL đầy đủ
-                        //         // if (!$product->thumbnail) {
-                        //             $product->thumbnail = $fileName;
-                        //             $product->save();
-                        //         // }
-                        //     }
-                        // } catch (\Exception $e) {
-                        //     Log::warning("⚠️ Không tải được ảnh: {$e->getMessage()}");
-                        // }
+                    //         // ✅ Chỉ lưu đường dẫn tương đối, không lưu URL đầy đủ
+                    //         // if (!$product->thumbnail) {
+                    //             $product->thumbnail = $fileName;
+                    //             $product->save();
+                    //         // }
+                    //     }
+                    // } catch (\Exception $e) {
+                    //     Log::warning("⚠️ Không tải được ảnh: {$e->getMessage()}");
+                    // }
                     // }
 
 
