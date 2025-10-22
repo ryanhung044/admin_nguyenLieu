@@ -14,7 +14,7 @@
 
         </div>
     </div>
-    <div class="d-flex justify-content-between align-items-center mb-3" style="overflow: auto">
+    <div class="d-lg-flex justify-content-between align-items-center mb-3" style="overflow: auto">
         <div class="btn-group" role="group" aria-label="Lọc theo trạng thái">
             @php
                 $statusFilters = [
@@ -29,7 +29,7 @@
             @endphp
             @foreach ($statusFilters as $key => $label)
                 <a href="{{ route('admin.orders.index', ['status' => $key]) }}"
-                    class="btn {{ request('status', 'all') == $key ? 'btn-primary' : 'btn-outline-primary' }} me-2">
+                    class="btn text-nowrap {{ request('status', 'all') == $key ? 'btn-primary' : 'btn-outline-primary' }} me-2">
                     {{ $label }}
                 </a>
             @endforeach
@@ -76,9 +76,9 @@
                     <th>Số điện thoại</th>
                     <th>Tổng tiền</th>
                     <th>Trạng thái</th>
-                    <th>Trạng thái thanh toán</th>
+                    <th>Thanh toán</th>
                     <th>Mặt hàng</th>
-                    <th>Người giới thiệu</th>
+                    {{-- <th>Người giới thiệu</th> --}}
                     <th>Hành động</th>
                 </tr>
             </thead>
@@ -86,9 +86,9 @@
                 @foreach ($orders as $order)
                     <tr>
                         <td>{{ $order->id }}</td>
-                        <td>{{ $order->name }}</td>
-                        <td>{{ $order->phone }}</td>
-                        <td>{{ number_format($order->total, 0, ',', '.') }} VND</td>
+                        <td class="text-nowrap">{{ $order->name }}</td>
+                        <td class="text-nowrap">{{ $order->phone }}</td>
+                        <td class="text-nowrap">{{ number_format($order->total, 0, ',', '.') }} VND</td>
                         @php
                             $statusLabels = [
                                 'pending' => ['label' => 'Khởi tạo', 'class' => 'secondary'],
@@ -125,15 +125,15 @@
                             @if ($order->items)
                                 @foreach ($order->items as $item)
                                     @if ($item->product)
-                                        <div>- {{ $item->product_name }} (x{{ $item->quantity }})</div>
+                                        <div class="text-nowrap">- {{ $item->product_name }} (x{{ $item->quantity }})</div>
                                     @else
-                                        <div>- Sản phẩm không tồn tại (x{{ $item->quantity }})</div>
+                                        <div class="text-nowrap">- Sản phẩm không tồn tại (x{{ $item->quantity }})</div>
                                     @endif
                                 @endforeach
                             @endif
                         </td>
 
-                        <td>
+                        {{-- <td>
                             @if ($order->referrer)
                                 <span class="badge fs-5 bg-secondary ">
                                     [#{{ $order->referrer->id }}] - {{ $order->referrer->full_name }}
@@ -141,7 +141,7 @@
                             @else
                                 <span class="badge fs-5 bg-danger">Không có</span>
                             @endif
-                        </td>
+                        </td> --}}
                         <td>
                             <div class="d-flex align-items-center gap-1">
                                 <a href="{{ route('admin.orders.show', $order->id) }}" class="btn btn-warning btn-sm">
