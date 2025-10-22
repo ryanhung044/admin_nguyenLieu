@@ -428,7 +428,7 @@
                                 <a class="dropdown-toggle profile-pic" data-bs-toggle="dropdown" href="#"
                                     aria-expanded="false">
                                     <div class="avatar-sm">
-                                        <img src="https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg"
+                                        <img src="{{ Auth::user()->avatar ? asset('storage/' . Auth::user()->avatar) : 'https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg'}}"
                                             alt="..." class="avatar-img rounded-circle" />
                                     </div>
                                     <span class="profile-username">
@@ -441,13 +441,13 @@
                                         <li>
                                             <div class="user-box">
                                                 <div class="avatar-lg">
-                                                    <img src="https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg"
+                                                    <img src="{{ Auth::user()->avatar ? asset('storage/' . Auth::user()->avatar) : 'https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg'}}"
                                                         alt="image profile" class="avatar-img rounded" />
                                                 </div>
                                                 <div class="u-text">
                                                     <h4>{{ Auth::user()->full_name }}</h4>
                                                     <p class="text-muted">{{ Auth::user()->email }}</p>
-                                                    <a href="profile.html"
+                                                    <a href="{{ route('user.profile.index') }}"
                                                         class="btn btn-xs btn-secondary btn-sm">View Profile</a>
                                                 </div>
                                             </div>
@@ -499,7 +499,7 @@
                         </div>
                     @endif
                     @if ($errors->any())
-                        <div class="alert alert-danger">
+                        <div class="alert alert-danger" data-bs-dismiss="alert">
                             <ul>
                                 @foreach ($errors->all() as $error)
                                     <li>{{ $error }}</li>
@@ -509,13 +509,18 @@
                     @endif
 
                     @if (session('success'))
-                        <div class="alert alert-success">
-                            {{ session('success') }}
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fas fa-check-circle"></i> {{ session('success') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                aria-label="Close"></button>
                         </div>
                     @endif
+
                     @if (session('error'))
-                        <div class="alert alert-danger">
-                            {{ session('error') }}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-circle"></i> {{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                aria-label="Close"></button>
                         </div>
                     @endif
 

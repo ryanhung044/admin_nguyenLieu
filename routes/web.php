@@ -19,6 +19,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductComboController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RewardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VoucherController;
@@ -117,6 +118,11 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::put('/admin/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('admin.orders.updateStatus');
     Route::put('/admin/orders/{order}/updateStatusPayment', [OrderController::class, 'updateStatusPayment'])->name('admin.orders.updateStatusPayment');
     Route::get('/admin/orders/{order}/invoice', [OrderController::class, 'invoice'])->name('admin.orders.invoice');
+});
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/me', [ProfileController::class, 'index'])->name('user.profile.index');
+    Route::post('/me', [ProfileController::class, 'update'])->name('user.profile.update');
 });
 
 Route::get('/login', function () {
