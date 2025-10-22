@@ -21,6 +21,7 @@ use App\Models\ProductCombo;
 use App\Models\ProductVariant;
 use App\Models\Voucher;
 use App\Models\WithdrawRequest;
+use App\Models\ZaloToken;
 use BcMath\Number;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -1155,9 +1156,25 @@ class ClientController extends Controller
             } catch (\Exception $ex) {
                 Log::error('Supership API error: ' . $ex->getMessage());
             }
-
+            try {
+                $this->sendZaloZns(
+                    $order->phone,
+                    env('ZALO_ZNS_TEMPLATE_ORDER_SUCCESS'), // id mẫu tin nhắn ZNS bạn tạo trên Zalo OA
+                    [
+                        "order_code"   => "ORDER-" . $order->id,
+                        "date"         => now()->format('d/m/Y'),
+                        "price"        => number_format($order->total, 0, ',', '.'),
+                        "name"         => $order->name,
+                        "phone_number" => $order->phone
+                    ]
+                );
+                Log::info('Zalo ZNS end');
+            } catch (\Exception $e) {
+                Log::error('Send ZNS failed: ' . $e->getMessage());
+            }
             DB::commit();
             event(new NewOrderPlaced($order));
+
 
             return response()->json([
                 'success'  => true,
@@ -1173,6 +1190,98 @@ class ClientController extends Controller
         }
     }
 
+    private function getZaloAccessToken(): ?string
+    {
+        // Lấy token mới nhất trong DB
+        $token = ZaloToken::orderBy('expired_at', 'desc')->first();
+        Log::info('access_token' . $token);
+
+        // Nếu token còn hạn dùng thì xài luôn
+        if ($token && $token->expired_at && now()->lt($token->expired_at)) {
+            return $token->access_token;
+        }
+
+        $appId     = env('ZALO_APP_ID');
+        $appSecret = env('ZALO_SECRET_KEY');
+        $refreshToken = $token?->refresh_token ?? env('ZALO_OA_REFRESH_TOKEN');
+
+        if (empty($refreshToken)) {
+            Log::error('Missing Zalo OA refresh_token. Please set it from Dashboard.');
+            return null;
+        }
+
+        $url = "https://oauth.zaloapp.com/v4/oa/access_token";
+
+        try {
+            $resp = Http::asForm()
+                ->withHeaders([
+                    'secret_key'   => $appSecret,
+                    'Content-Type' => 'application/x-www-form-urlencoded',
+                ])->post($url, [
+                    'app_id'        => $appId,
+                    'refresh_token' => $refreshToken,
+                    'grant_type'    => 'refresh_token',
+                ]);
+
+            $data = $resp->json();
+
+            if (!empty($data['access_token'])) {
+                // Lưu DB token mới
+                ZaloToken::updateOrCreate(
+                    ['id' => $token?->id ?? 1],
+                    [
+                        'access_token'  => $data['access_token'],
+                        'refresh_token' => $data['refresh_token'] ?? $refreshToken,
+                        'expired_at' => isset($data['expires_in'])
+                            ? now()->addDays($data['expires_in'])
+                            : now()->addDays(30),
+                    ]
+                );
+                Log::info('access_token' . $data['access_token']);
+
+                return $data['access_token'];
+            }
+
+            Log::error('Zalo getAccessToken failed', $data);
+            return null;
+        } catch (\Throwable $e) {
+            Log::error('Zalo getAccessToken exception: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function sendZaloZns($phone, $templateId, $data)
+    {
+        if (str_starts_with($phone, '0')) {
+            $phone = '84' . substr($phone, 1);
+        }
+
+        try {
+            $accessToken = $this->getZaloAccessToken();
+
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+                'access_token' => $accessToken,
+            ])->post('https://business.openapi.zalo.me/message/template', [
+                'phone' => $phone,
+                'template_id' => $templateId,
+                'template_data' => $data,
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('Zalo ZNS error', [
+                    'response' => $response->body()
+                ]);
+            }
+            Log::error('response Zalo ZNS', [
+                'response' => $response->body()
+            ]);
+            return $response->json();
+        } catch (\Exception $e) {
+            Log::error('Send ZNS exception: ' . $e->getMessage());
+            return null;
+        }
+    }
 
     private function getDownlines($userId, $maxDepth = 3)
     {

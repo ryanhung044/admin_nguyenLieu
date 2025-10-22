@@ -928,7 +928,7 @@ class ConversationController extends Controller
                         'access_token'  => $data['access_token'],
                         'refresh_token' => $data['refresh_token'] ?? $refreshToken,
                         'expired_at' => isset($data['expires_in'])
-                            ? now()->addSeconds($data['expires_in'])
+                            ? now()->addDays($data['expires_in'])
                             : now()->addDays(30),
                     ]
                 );
