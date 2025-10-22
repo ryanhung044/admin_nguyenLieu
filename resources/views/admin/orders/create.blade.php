@@ -27,13 +27,12 @@
 
                     <div class="mb-2 d-flex gap-2">
                         <input type="text" id="voucher_code" class="form-control" placeholder="Nhập mã giảm giá">
-                        <button type="button" id="apply-voucher" class="btn btn-outline-primary btn-sm">Áp dụng</button>
-                        <button type="button" class="btn btn-outline-success btn-sm" data-bs-toggle="modal"
+                        <button type="button" id="apply-voucher" class="btn btn-outline-primary btn-sm text-nowrap">Áp dụng</button>
+                        <button type="button" class="btn btn-outline-success btn-sm text-nowrap " data-bs-toggle="modal"
                             data-bs-target="#createVoucherModal">
                             + Tạo mã
                         </button>
                     </div>
-                    <div id="voucher-info" class="text-success small mb-2"></div>
 
                     <div id="voucher-info" class="text-success small mb-2"></div>
 
@@ -80,7 +79,7 @@
                                         class="card-img-top" alt="{{ $product->name }}"
                                         style="height:200px; object-fit:cover;">
                                     <div class="card-body d-flex flex-column">
-                                        <h6 class="card-title">{{ $product->name }}</h6>
+                                        <h6 class="card-title text-truncate">{{ $product->name }}</h6>
                                         @if ($product->variants->count())
                                             <select class="form-select form-select-sm mb-2 variant-select"
                                                 data-product-id="{{ $product->id }}">
@@ -391,6 +390,14 @@
 
         .list-group-item {
             flex-direction: column;
+        }
+        .text-truncate {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+            /* max-width: 250px; */
+            /* điều chỉnh chiều rộng phù hợp */
         }
     </style>
 
