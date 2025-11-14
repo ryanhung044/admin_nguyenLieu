@@ -242,17 +242,34 @@
                 <span
                     class="badge bg-{{ $conversation->platform == 'zalo' ? 'info' : 'primary' }}">{{ ucfirst($conversation->platform) }}</span>
             </p>
-            <h4><img src="{{ $conversation->user->avatar ?? asset('images/default-avatar.png') }}"
+            <h4 class="d-flex gap-3"><img src="{{ $conversation->user->avatar ?? asset('images/default-avatar.png') }}"
                     class="rounded-circle me-2" width="50" height="50">
-                {{ $conversation?->user?->name ?? 'Khách hàng' }}
+                    <div class="d-flex flex-column align-items-start">
+                        {{ $conversation?->user?->name ?? 'Khách hàng' }}
+                    <button class="btn btn-primary btn-sm mt-2" onclick="showOrderHistory()">Xem lịch sử đơn</button>
+
+                    </div>
+
             </h4>
-            <p><strong>Thời gian:</strong>
-                {{ $conversation->last_time ? \Carbon\Carbon::parse($conversation->last_time)->format('d/m/Y H:i') : '' }}
+            <p>
+            <p>
+                <strong>Địa chỉ:</strong>
+                <span>{{ $conversation?->user?->address }}</span>
+                <i class="fa fa-clipboard ms-2" style="cursor:pointer;"
+                    onclick="copyToClipboard('{{ $conversation?->user?->address }}', this)"></i>
+            </p>
+
+            <p>
+                <strong>Số điện thoại:</strong>
+                <span>{{ $conversation?->user?->phone }}</span>
+                <i class="fa fa-clipboard ms-2" style="cursor:pointer;"
+                    onclick="copyToClipboard('{{ $conversation?->user?->phone }}', this)"></i>
             </p>
             <a href="{{ route('admin.conversations.index') }}" class="btn btn-secondary btn-sm"><i
                     class="fa-solid fa-arrow-left"></i> Quay lại danh sách</a>
 
-            <button id="toggleOrderForm" class="btn btn-success btn-sm"><i class="fa-solid fa-plus"></i> Lên đơn</button>
+            <button id="toggleOrderForm" onclick="toggleOrderForm()" class="btn btn-success btn-sm"><i
+                    class="fa-solid fa-plus"></i> Lên đơn</button>
 
             <div class="card-footer mt-2 d-none" id="orderSection">
                 <h6>Đặt hàng cho khách</h6>
@@ -437,7 +454,7 @@
         <div class="mb-2 d-none" id="orderHistorySection">
             <div class="card mt-3">
                 <div class="card-header">Lịch sử đơn hàng</div>
-                <div class="card-body" style="overflow-y:auto; max-height:800px;">
+                <div class="card-body">
                     <ul id="orderHistoryList" class="list-group"></ul>
                 </div>
             </div>
@@ -488,6 +505,33 @@
             </div>
         </div>
     </div>
+    <script>
+        function copyToClipboard(text, element) {
+            console.log('ok');
+
+            navigator.clipboard.writeText(text).then(() => {
+                // Change icon to check
+                element.classList.remove('fa-clipboard');
+                element.classList.add('fa-check');
+
+                // Revert back after 1s
+                setTimeout(() => {
+                    element.classList.remove('fa-check');
+                    element.classList.add('fa-clipboard');
+                }, 1000);
+            }).catch(err => console.error("Copy failed:", err));
+        }
+
+        function showOrderHistory() {
+    const orderSection = document.getElementById('orderHistorySection');
+    orderSection.classList.remove('d-none');
+
+    // Scroll tới lịch sử đơn
+    orderSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+    </script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const createBtn = document.getElementById('createVoucherBtn');
@@ -586,52 +630,55 @@
                         const createdAt = new Date(order.created_at).toLocaleString('vi-VN');
 
                         const li = document.createElement("li");
-                        li.classList.add("list-group-item");
+                        li.classList.add("list-group-item", "mb-3", "shadow-sm", "rounded");
 
                         let itemsHtml = order.items.map(item => `
-        <tr>
-            <td style="width:50px">
-                <img src="/storage/${item.thumbnail}" 
-                     alt="${item.product_name}" 
-                     style="width:40px;height:40px;object-fit:cover;">
-            </td>
-            <td>${item.product_name}</td>
-            <td class="text-center">x${item.quantity}</td>
-            <td class="text-end">${Number(item.price).toLocaleString('vi-VN')}đ</td>
-        </tr>
+        <div class="d-flex align-items-center p-2 mb-2 border rounded">
+            <img src="/storage/${item.thumbnail}" 
+                 alt="${item.product_name}" 
+                 class="rounded" 
+                 style="width:50px; height:50px; object-fit:cover;">
+            <div class="flex-grow-1 ms-3">
+                <div class="fw-bold">${item.product_name}</div>
+                <div class="text-muted small">x${item.quantity}</div>
+            </div>
+            <div class="fw-bold text-end" style="width:100px;">
+                ${Number(item.price).toLocaleString('vi-VN')}đ
+            </div>
+        </div>
     `).join("");
 
-                        li.innerHTML = `
+    li.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+                <div class="fw-bold">#${order.id} - ${order.name} (${order.phone})</div>
+                <div class="text-muted small">${createdAt}</div>
+                <div class="mt-1">
+                    <div><strong>Địa chỉ:</strong> ${order.address}</div>
+                    <div><strong>Thanh toán:</strong> ${order.payment_method.toUpperCase()}</div>
+                    <div>
+                        <strong>Trạng thái:</strong> 
+                        <span class="badge ${order.status === 'pending' ? 'bg-warning' : 'bg-success'}">
+                            ${order.status}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <a href="/admin/orders?status=all&from_date=&to_date=&search=${order.id}" 
+                   class="btn btn-sm btn-primary">
+                    Xem
+                </a>
+            </div>
+        </div>
+
         <div class="mb-2">
-            <strong>Mã đơn:</strong> #${order.id} |
-            <strong>Khách:</strong> ${order.name} (${order.phone}) |
-            <strong>Ngày tạo:</strong> ${createdAt}
+            ${itemsHtml}
         </div>
-        <div class="mb-2">
-            <strong>Địa chỉ:</strong> ${order.address}<br>
-            <strong>Thanh toán:</strong> ${order.payment_method.toUpperCase()} |
-            <strong>Trạng thái:</strong> 
-                <span class="badge ${order.status === 'pending' ? 'bg-warning' : 'bg-success'}">
-                    ${order.status}
-                </span>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-sm table-bordered align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width:50px"></th>
-                        <th>Sản phẩm</th>
-                        <th class="text-center">SL</th>
-                        <th class="text-end">Giá</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${itemsHtml}
-                </tbody>
-            </table>
-        </div>
-        <div class="text-end fw-bold">Tổng: ${Number(order.total).toLocaleString('vi-VN')}đ</div>
+
+        <div class="text-end fw-bold fs-6">Tổng: ${Number(order.total).toLocaleString('vi-VN')}đ</div>
     `;
+
 
                         list.appendChild(li);
                     });
@@ -657,13 +704,20 @@
     </script>
 
     <script>
-        document.getElementById('toggleOrderForm').addEventListener('click', () => {
+        function toggleOrderForm() {
             const orderSection = document.getElementById('orderSection');
             const productSection = document.getElementById('productSection');
 
             orderSection.classList.toggle('d-none');
             productSection.classList.toggle('d-none');
-        });
+        }
+        // document.getElementById('toggleOrderForm').addEventListener('click', () => {
+        //     const orderSection = document.getElementById('orderSection');
+        //     const productSection = document.getElementById('productSection');
+
+        //     orderSection.classList.toggle('d-none');
+        //     productSection.classList.toggle('d-none');
+        // });
     </script>
     <script>
         let cart = [];
@@ -737,19 +791,19 @@
                                 <tbody>
                                     ${cart.map((item, i) =>
                                     `<tr>
-                                                                                                                            <td>${item.name}</td>
-                                                                                                                            <td>${item.price.toLocaleString()} đ</td>
-                                                                                                                            <td>
-                                                                                                                                <input type="number" class="form-control form-control-sm update-qty" 
-                                                                                                                                        data-index="${i}" min="1" value="${item.quantity}" style="min-width: 50px;">
-                                                                                                                            </td>
-                                                                                                                            <td>${(item.price * item.quantity).toLocaleString()} đ</td>
-                                                                                                                            <td>
-                                                                                                                                <button class="btn btn-danger btn-sm remove-item" data-index="${i}">
-                                                                                                                                    Xóa
-                                                                                                                                </button>
-                                                                                                                            </td>
-                                                                                                                        </tr>`).join('')}
+                                                                                                                                                            <td>${item.name}</td>
+                                                                                                                                                            <td>${item.price.toLocaleString()} đ</td>
+                                                                                                                                                            <td>
+                                                                                                                                                                <input type="number" class="form-control form-control-sm update-qty" 
+                                                                                                                                                                        data-index="${i}" min="1" value="${item.quantity}" style="min-width: 50px;">
+                                                                                                                                                            </td>
+                                                                                                                                                            <td>${(item.price * item.quantity).toLocaleString()} đ</td>
+                                                                                                                                                            <td>
+                                                                                                                                                                <button class="btn btn-danger btn-sm remove-item" data-index="${i}">
+                                                                                                                                                                    Xóa
+                                                                                                                                                                </button>
+                                                                                                                                                            </td>
+                                                                                                                                                        </tr>`).join('')}
                                 </tbody>
                                 `;
             container.appendChild(table);
@@ -899,6 +953,8 @@
                         appliedVoucher = null;
                         discountAmount = 0;
                         renderCart();
+                        toggleOrderForm();
+                        loadOrderHistory(@json($conversation->user->id));
                     } else {
                         alert("Lỗi: " + data.message);
                     }
