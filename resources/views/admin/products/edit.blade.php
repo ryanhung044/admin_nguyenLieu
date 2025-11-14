@@ -110,7 +110,8 @@
                     <div class="mb-3 col-md-6">
                         <label for="price" class="form-label">Giá niêm yết</label>
                         <input type="number" class="form-control @error('price') is-invalid @enderror" id="price"
-                            name="price" value="{{ (float) old('price', (float) $product->price) }}" min="0" step="1000">
+                            name="price" value="{{ (float) old('price', (float) $product->price) }}" min="0"
+                            step="1000">
                         @error('price')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -119,8 +120,20 @@
                     <div class="mb-3 col-md-6">
                         <label for="sale_price" class="form-label">Giá bán</label>
                         <input type="number" class="form-control @error('sale_price') is-invalid @enderror" id="sale_price"
-                            name="sale_price" value="{{ (float) old('sale_price', (float) $product->sale_price) }}" required min="1000" step="1000">
+                            name="sale_price" value="{{ (float) old('sale_price', (float) $product->sale_price) }}"
+                            required min="1000" step="1000">
                         @error('sale_price')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3 col-md-6">
+                        <label for="cost_price" class="form-label">Giá vốn</label>
+                        <input type="number" class="form-control @error('cost_price') is-invalid @enderror"
+                            id="cost_price" name="cost_price"
+                            value="{{ (float) old('cost_price', (float) $product->cost_price) }}" required min="1000"
+                            step="1000">
+                        @error('cost_price')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>

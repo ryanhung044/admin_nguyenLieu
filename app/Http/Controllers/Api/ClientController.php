@@ -899,6 +899,7 @@ class ClientController extends Controller
             'cart.*.variant_id' => 'nullable|integer|exists:product_variants,id',
             'cart.*.name'      => 'nullable',
             'referrer_id'      => 'nullable|integer|exists:users,id',
+            'user_id'      => 'nullable|integer|exists:users,id',
             'oldUser'          => 'nullable',
             'include_vat'      => 'nullable|boolean',
             'voucher'          => 'nullable|string|exists:vouchers,code',

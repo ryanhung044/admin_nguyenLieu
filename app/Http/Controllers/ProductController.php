@@ -74,6 +74,7 @@ class ProductController extends Controller
             'images.*' => 'nullable|image',
             'price' => 'nullable|numeric',
             'sale_price' => 'nullable|numeric',
+            'cost_price' => 'nullable|numeric',
             'slug' => 'nullable|string',
             'sku' => 'nullable|string',
             'category_id' => 'nullable|exists:product_categories,id',
@@ -96,6 +97,7 @@ class ProductController extends Controller
 
             'price.numeric' => 'Giá niêm yết phải là số.',
             'sale_price.numeric' => 'Giá bán phải là số.',
+            'cost_price.numeric' => 'Giá vốn phải là số.',
 
             'slug.string' => 'Slug phải là chuỗi ký tự.',
 
@@ -269,6 +271,7 @@ class ProductController extends Controller
             'images.*' => 'nullable|image',
             'price' => 'nullable|numeric',
             'sale_price' => 'nullable|numeric',
+            'cost_price' => 'nullable|numeric',
             'slug' => 'nullable|string|unique:products,slug,' . $product->id,
             'sku' => 'nullable|string|unique:products,sku,' . $product->id,
             'category_id' => 'nullable|exists:product_categories,id',
@@ -291,6 +294,7 @@ class ProductController extends Controller
 
             'price.numeric' => 'Giá niêm yết phải là số.',
             'sale_price.numeric' => 'Giá bán phải là số.',
+            'cost_price.numeric' => 'Giá vốn phải là số.',
 
             'slug.unique' => 'Slug này đã tồn tại, vui lòng chọn slug khác.',
             'slug.string' => 'Slug phải là chuỗi ký tự.',
@@ -515,190 +519,109 @@ class ProductController extends Controller
     }
 
     public function importAllFromExcel(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|file|mimes:xlsx,xls,csv',
-        ]);
+{
+    $request->validate([
+        'file' => 'required|file|mimes:xlsx,xls,csv',
+    ]);
 
-        ini_set('max_execution_time', 300);
-        set_time_limit(300);
+    ini_set('max_execution_time', 300);
+    set_time_limit(300);
 
-        try {
-            if (!$request->hasFile('file')) {
-                return back()->with('error', 'Không tìm thấy file upload!');
-            }
-
-            $path = $request->file('file')->getRealPath();
-            $rows = Excel::toArray([], $path)[0]; // Lấy sheet đầu tiên
-            $header = array_shift($rows); // Bỏ dòng tiêu đề
-
-            $imported = 0;
-            $failed = 0;
-
-            DB::beginTransaction();
-
-            foreach ($rows as $index => $row) {
-                try {
-                    // Mapping cột dựa theo cấu trúc bạn đưa
-                    // Mapping cột dựa theo thứ tự bạn cung cấp
-                    $url             = trim($row[0] ?? '');   // Url
-                    $name            = trim($row[1] ?? '');   // Tên
-                    $description     = trim($row[2] ?? '');   // Mô tả
-                    $excerpt         = trim($row[3] ?? '');   // Trích dẫn
-                    $brand           = trim($row[4] ?? '');   // Hãng
-                    $categoryName    = trim($row[5] ?? '');   // Loại sản phẩm
-                    $attr1Name       = trim($row[6] ?? '');   // Thuộc tính 1
-                    $attr1Value      = trim($row[7] ?? '');   // Giá trị thuộc tính 1
-                    $attr2Name       = trim($row[8] ?? '');   // Thuộc tính 2
-                    $attr2Value      = trim($row[9] ?? '');   // Giá trị thuộc tính 2
-                    $attr3Name       = trim($row[10] ?? '');  // Thuộc tính 3
-                    $attr3Value      = trim($row[11] ?? '');  // Giá trị thuộc tính 3
-                    $variantSku      = trim($row[12] ?? '');  // Mã phiên bản sản phẩm
-                    $weight          = (float)($row[13] ?? 0); // Khối lượng
-                    $stock           = (int)($row[14] ?? 0);  // Số lượng tồn kho
-                    $price           = (int)($row[15] ?? 0); // Giá
-                    $comparePrice    = (int)($row[16] ?? 0); // Giá so sánh
-                    $isDeliverable   = strtolower(trim($row[17] ?? 'yes')) === 'yes'; // Có giao hàng không?
-                    $variantTaxable  = strtolower(trim($row[18] ?? 'no')) === 'yes';  // Variant Taxable
-                    $barcode         = trim($row[19] ?? '');  // Barcode
-                    $imageUrl        = trim($row[20] ?? '');  // Link hình
-                    $imageDesc       = trim($row[21] ?? '');  // Mô tả hình
-                    $seoTitle        = trim($row[22] ?? '');  // SEO Title
-                    $seoDescription  = trim($row[23] ?? '');  // SEO Description
-                    $variantImage    = trim($row[24] ?? '');  // Ảnh biến thể
-
-
-                    if (empty($name)) continue;
-                    if (empty($barcode)) continue;
-
-                    /** -------------------------
-                     * 1️⃣ TẠO DANH MỤC (nếu có)
-                     * ------------------------*/
-                    $category = null;
-                    if (!empty($categoryName)) {
-                        $category = ProductCategory::firstOrCreate(
-                            ['name' => $categoryName],
-                            [
-                                'slug' => Str::slug($categoryName),
-                                'parent_id' => null,
-                                'sort_order' => 0,
-                            ]
-                        );
-                    }
-
-                    /** -------------------------
-                     * 2️⃣ TẠO SẢN PHẨM CHÍNH
-                     * ------------------------*/
-                    $slugBase = Str::slug($name);
-                    $slug = $slugBase;
-                    $count = 1;
-                    while (Product::where('slug', $slug)->exists()) {
-                        $slug = $slugBase . '-' . $count++;
-                    }
-
-                    $product = Product::firstOrCreate(
-                        ['slug' => $slug],
-                        [
-                            'name' => $name,
-                            'summary' => Str::limit(strip_tags($description), 200),
-                            'content' => $description,
-                            'thumbnail' => null,
-                            'price' => $comparePrice,
-                            'sale_price' => $price,
-                            'stock' => $stock,
-                            'category_id' => $category ? $category->id : null,
-                            'sku' => strtoupper('SKU-' . Str::random(6)),
-                            // 'seo_title' => $seoTitle,
-                            // 'seo_description' => $seoDescription,
-                        ]
-                    );
-
-                    /** -------------------------
-                     * 3️⃣ LƯU ẢNH
-                     * ------------------------*/
-                    // if ($imageUrl && Str::startsWith($imageUrl, ['http://', 'https://'])) {
-                    // try {
-                    //     $imageContent = @file_get_contents($imageUrl);
-                    //     Log::warning("imageContent: {$imageContent}");
-
-                    //     if ($imageContent !== false) {
-                    //         // Lấy tên file gốc (không gồm domain)
-                    //         $pathInfo = pathinfo(parse_url($imageUrl, PHP_URL_PATH));
-                    //         $extension = strtolower($pathInfo['extension'] ?? 'jpg');
-
-                    //         // Đảm bảo tên file an toàn
-                    //         $fileName = 'products/' . Str::slug($name) . '-' . uniqid() . '.' . $extension;
-                    //     Log::warning("ảnh: {$fileName}");
-
-                    //         // Lưu file vào storage/public/products/
-                    //         Storage::disk('public')->put($fileName, $imageContent);
-
-                    //         // ✅ Chỉ lưu đường dẫn tương đối, không lưu URL đầy đủ
-                    //         // if (!$product->thumbnail) {
-                    //             $product->thumbnail = $fileName;
-                    //             $product->save();
-                    //         // }
-                    //     }
-                    // } catch (\Exception $e) {
-                    //     Log::warning("⚠️ Không tải được ảnh: {$e->getMessage()}");
-                    // }
-                    // }
-
-
-                    /** -------------------------
-                     * 4️⃣ TẠO BIẾN THỂ
-                     * ------------------------*/
-                    // $variant = ProductVariant::create([
-                    //     'product_id' => $product->id,
-                    //     'price' => $comparePrice,
-                    //     'sale_price' => $price,
-                    //     'stock' => $stock,
-                    //     // 'weight' => $weight,
-                    //     'barcode' => $barcode,
-                    // ]);
-                    // if ($variantImage) {
-                    //     $variant->image = $variantImage;
-                    //     $variant->save();
-                    // }
-
-                    // /** -------------------------
-                    //  * 5️⃣ TẠO / GẮN THUỘC TÍNH
-                    //  * ------------------------*/
-                    // $attrs = [
-                    //     [$attr1Name, $attr1Value],
-                    //     [$attr2Name, $attr2Value],
-                    //     [$attr3Name, $attr3Value],
-                    // ];
-
-                    // foreach ($attrs as [$attrName, $attrValue]) {
-                    //     if (!$attrName || !$attrValue) continue;
-
-                    //     $attribute = Attribute::firstOrCreate(['name' => $attrName]);
-                    //     $attrVal = AttributeValue::firstOrCreate([
-                    //         'attribute_id' => $attribute->id,
-                    //         'value' => $attrValue,
-                    //     ]);
-
-                    //     // Gắn vào variant
-                    //     if (!$variant->attributeValues->contains($attrVal->id)) {
-                    //         $variant->attributeValues()->attach($attrVal->id);
-                    //     }
-                    // }
-
-                    $imported++;
-                } catch (\Throwable $e) {
-                    Log::error("❌ Lỗi tại dòng {$index}: " . $e->getMessage());
-                    $failed++;
-                }
-            }
-
-            DB::commit();
-
-            return back()->with('success', "✅ Import xong: {$imported} dòng thành công, {$failed} lỗi.");
-        } catch (\Throwable $th) {
-            DB::rollBack();
-            Log::error('❌ Lỗi import tổng hợp: ' . $th->getMessage());
-            return back()->with('error', 'Lỗi khi import: ' . $th->getMessage());
+    try {
+        if (!$request->hasFile('file')) {
+            return back()->with('error', 'Không tìm thấy file upload!');
         }
+
+        $path = $request->file('file')->getRealPath();
+        $rows = Excel::toArray([], $path)[0];
+        $header = array_shift($rows);
+
+        // 🔧 Chuẩn bị 4 danh mục chính cố định
+        $mainCategories = [
+            'HỘP' => ['Hộp carton'],
+            'XỐP NỔ & FOAM' => ['Xốp nổ', 'Xốp foam'],
+            'BĂNG DÍNH & MÀNG PE' => ['Băng dính', 'Màng PE'],
+            'TÚI BÓNG & GIẤY IN NHIỆT & DỤNG CỤ KHÁC' => ['Túi', 'Giấy in nhiệt'],
+        ];
+
+        // Đảm bảo 4 danh mục này tồn tại
+        $categoryMap = [];
+        foreach (array_keys($mainCategories) as $catName) {
+            $categoryMap[$catName] = ProductCategory::firstOrCreate(
+                ['name' => $catName],
+                ['slug' => Str::slug($catName), 'parent_id' => null]
+            );
+        }
+
+        $imported = 0;
+        $failed = 0;
+
+        DB::beginTransaction();
+
+        foreach ($rows as $index => $row) {
+            try {
+                $originalName = trim($row[1] ?? '');
+                $categoryRaw  = trim($row[2] ?? '');
+                $structure    = trim($row[3] ?? '');
+                $salePrice    = (int)($row[4] ?? 0);
+
+                if (empty($categoryRaw) || $salePrice <= 0) continue;
+
+                // 🔍 Xác định nhóm danh mục
+                $mainGroup = 'TÚI BÓNG & GIẤY IN NHIỆT & DỤNG CỤ KHÁC';
+                foreach ($mainCategories as $group => $keywords) {
+                    foreach ($keywords as $keyword) {
+                        if (Str::contains(Str::lower($categoryRaw), Str::lower($keyword))) {
+                            $mainGroup = $group;
+                            break 2;
+                        }
+                    }
+                }
+
+                // 🏷️ Tạo tên sản phẩm
+                $nameParts = array_filter([$categoryRaw, $structure, $originalName]);
+                $name = implode(' ', $nameParts);
+                $name = Str::title(Str::lower($name)); // Viết hoa chữ đầu
+
+                // 💰 Tính giá niêm yết cao hơn giá bán ~10%
+                $price = ceil(($salePrice * 1.2) / 1000) * 1000; // Làm tròn lên nghìn
+
+                // 🔖 Sinh slug duy nhất
+                $slugBase = Str::slug($name);
+                $slug = $slugBase;
+                $count = 1;
+                while (Product::where('slug', $slug)->exists()) {
+                    $slug = $slugBase . '-' . $count++;
+                }
+
+                Product::create([
+                    'name' => $name,
+                    'slug' => $slug,
+                    'summary' => $structure,
+                    'content' => $structure,
+                    'price' => $price,          // Giá niêm yết (cao hơn)
+                    'sale_price' => $salePrice, // Giá bán thật
+                    'stock' => 999,
+                    'category_id' => $categoryMap[$mainGroup]->id,
+                    'sku' => strtoupper('SKU-' . Str::random(6)),
+                ]);
+
+                $imported++;
+            } catch (\Throwable $e) {
+                Log::error("❌ Lỗi tại dòng {$index}: " . $e->getMessage());
+                $failed++;
+            }
+        }
+
+        DB::commit();
+
+        return back()->with('success', "✅ Import xong: {$imported} sản phẩm, {$failed} lỗi.");
+    } catch (\Throwable $th) {
+        DB::rollBack();
+        Log::error('❌ Lỗi import tổng hợp: ' . $th->getMessage());
+        return back()->with('error', 'Lỗi khi import: ' . $th->getMessage());
     }
+}
+
+
 }

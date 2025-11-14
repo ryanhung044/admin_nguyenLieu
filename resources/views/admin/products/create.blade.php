@@ -34,8 +34,8 @@
                     @enderror
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="mb-3">
+            <div class="col-md-4 ">
+                <div class="mb-3 d-none">
                     <label for="sku" class="form-label">Mã sản phẩm</label>
                     <input type="text" class="form-control @error('sku') is-invalid @enderror" id="sku"
                         name="sku" value="{{ old('sku') }}">
@@ -44,7 +44,7 @@
                     @enderror
                 </div>
 
-                <div class="mb-3">
+                <div class="mb-3 d-none">
                     <label for="slug" class="form-label">Đường dẫn đến sản phẩm:</label>
                     <input type="text" class="form-control @error('slug') is-invalid @enderror" id="slug"
                         name="slug" value="{{ old('slug') }}">
@@ -53,9 +53,9 @@
                     @enderror
                 </div>
                 <div class="mb-3">
-                    <label for="commission_rate" class="form-label">Hoa hồng cho cộng tác viên:</label>
+                    <label for="commission_rate" class="form-label">Hoa hồng cho CTV (%)</label>
                     <input type="text" class="form-control @error('commission_rate') is-invalid @enderror"
-                        id="commission_rate" name="commission_rate" value="{{ old('commission_rate') }}">
+                        id="commission_rate" name="commission_rate" value="{{ old('commission_rate', 0) }}">
                     @error('commission_rate')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -99,24 +99,35 @@
                     @enderror
                 </div> --}}
                 <div class="row">
-                    <div class="mb-3 col-md-6">
-                        <label for="price" class="form-label">Giá niêm yết</label>
-                        <input type="number" class="form-control @error('price') is-invalid @enderror" id="price"
-                            name="price" value="{{ old('price') }}" min="1000" step="1000">
-                        @error('price')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+    <div class="mb-3 col-12 col-md-12 col-lg-6">
+        <label for="price" class="form-label">Giá niêm yết</label>
+        <input type="number" class="form-control @error('price') is-invalid @enderror" id="price"
+            name="price" value="{{ old('price') }}" min="1000" step="1000">
+        @error('price')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+    </div>
 
-                    <div class="mb-3 col-md-6">
-                        <label for="sale_price" class="form-label">Giá bán</label>
-                        <input type="number" class="form-control @error('sale_price') is-invalid @enderror" id="sale_price"
-                            name="sale_price" value="{{ old('sale_price') }}" required min="1000" step="1000">
-                        @error('sale_price')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
+    <div class="mb-3 col-12 col-md-12 col-lg-6">
+        <label for="sale_price" class="form-label">Giá bán</label>
+        <input type="number" class="form-control @error('sale_price') is-invalid @enderror" id="sale_price"
+            name="sale_price" value="{{ old('sale_price') }}" required min="1000" step="1000">
+        @error('sale_price')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+    </div>
+
+    <div class="mb-3 col-12 col-md-12 col-lg-12">
+        <label for="cost_price" class="form-label">Giá vốn</label>
+        <input type="number" class="form-control @error('cost_price') is-invalid @enderror" id="cost_price"
+            name="cost_price" value="{{ old('cost_price') }}" min="0" step="100">
+        @error('cost_price')
+            <div class="invalid-feedback">{{ $message }}</div>
+        @enderror
+    </div>
+</div>
+
+
                 <div class="mb-3">
                     <label for="thumbnail" class="form-label">Ảnh đại diện</label>
                     <input type="file" class="form-control @error('thumbnail') is-invalid @enderror" id="thumbnail"

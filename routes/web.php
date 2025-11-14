@@ -123,6 +123,12 @@ Route::middleware(['auth', 'admin'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('/me', [ProfileController::class, 'index'])->name('user.profile.index');
     Route::post('/me', [ProfileController::class, 'update'])->name('user.profile.update');
+    // routes/web.php
+    Route::get('/auth/token', function () {
+        return response()->json([
+            'token' => auth()->user()->api_token
+        ]);
+    });
 });
 
 Route::get('/login', function () {

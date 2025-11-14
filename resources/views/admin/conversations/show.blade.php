@@ -276,7 +276,7 @@
                             <option value="zalo_pay">ZaloPay</option>
                         </select>
                     </div>
-                    {{-- <input type="hidden" id="user_id" value="{{ $conversation->user->id }}"> --}}
+                    <input type="hidden" id="user_id" value="{{ $conversation->user->id }}">
 
                     <div class="mb-2 d-flex gap-2">
                         <input type="text" id="voucher_code" class="form-control" placeholder="Nhập mã giảm giá">
@@ -665,175 +665,6 @@
             productSection.classList.toggle('d-none');
         });
     </script>
-    {{-- <script>
-        let cart = [];
-
-        // Hàm render giỏ hàng
-        function renderCart() {
-            const container = document.getElementById('cart-items');
-            container.innerHTML = '';
-
-            if (cart.length === 0) {
-                container.innerHTML = '<p class="text-muted">Chưa có sản phẩm nào trong giỏ.</p>';
-                document.getElementById('cart-total').textContent = '0 đ';
-                return;
-            }
-
-            const table = document.createElement('table');
-            table.className = 'table table-sm align-middle';
-            table.innerHTML = `
-        <thead>
-            <tr>
-                <th>Sản phẩm</th>
-                <th>Giá</th>
-                <th style="width:90px">SL</th>
-                <th>Thành tiền</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            ${cart.map((item, i) => `
-                                                                                                                                    <tr>
-                                                                                                                                        <td>${item.name}</td>
-                                                                                                                                        <td>${item.price.toLocaleString()} đ</td>
-                                                                                                                                        <td>
-                                                                                                                                            <input type="number" class="form-control form-control-sm update-qty" 
-                                                                                                                                                   data-index="${i}" min="1" value="${item.quantity}">
-                                                                                                                                        </td>
-                                                                                                                                        <td>${(item.price * item.quantity).toLocaleString()} đ</td>
-                                                                                                                                        <td>
-                                                                                                                                            <button class="btn btn-danger btn-sm remove-item" data-index="${i}">
-                                                                                                                                                Xóa
-                                                                                                                                            </button>
-                                                                                                                                        </td>
-                                                                                                                                    </tr>
-                                                                                                                                `).join('')}
-        </tbody>
-    `;
-            container.appendChild(table);
-
-            // Cập nhật tổng
-            const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-            document.getElementById('cart-total').textContent = total.toLocaleString() + ' đ';
-
-            // Gán event update & remove
-            document.querySelectorAll('.update-qty').forEach(input => {
-                input.addEventListener('change', () => {
-                    const index = input.dataset.index;
-                    const newQty = parseInt(input.value) || 1;
-                    cart[index].quantity = newQty;
-                    renderCart();
-                });
-            });
-
-            document.querySelectorAll('.remove-item').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const index = btn.dataset.index;
-                    cart.splice(index, 1);
-                    renderCart();
-                });
-            });
-        }
-
-        // Sự kiện thêm vào giỏ
-        document.querySelectorAll('.add-to-cart').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const productId = btn.dataset.productId;
-                const card = btn.closest('.card-body');
-                const select = card.querySelector('.variant-select');
-                const qtyInput = card.querySelector('.qty-input');
-                const quantity = parseInt(qtyInput.value) || 1;
-                if (quantity <= 0) return alert('Vui lòng nhập số lượng');
-
-                let variantId = null;
-                let attrs = '';
-                let price = 0;
-
-                if (select && select.value) {
-                    variantId = select.value;
-                    const option = select.options[select.selectedIndex];
-                    attrs = option.dataset.attrs;
-                    price = parseFloat(option.dataset.price);
-                } else {
-                    price = parseFloat(btn.dataset.price || 0);
-                }
-
-                // Kiểm tra có trong giỏ chưa
-                const existing = cart.find(c => c.id == productId && c.variant_id == variantId);
-                if (existing) {
-                    existing.quantity += quantity;
-                } else {
-                    cart.push({
-                        id: productId,
-                        variant_id: variantId,
-                        name: btn.dataset.name + (attrs ? ` (${attrs})` : ''),
-                        price,
-                        quantity
-                    });
-                }
-
-                console.log(cart);
-
-                qtyInput.value = '';
-                renderCart();
-            });
-        });
-
-        // Sự kiện checkout
-        document.getElementById('checkout-btn').addEventListener('click', () => {
-            event.preventDefault(); // ❌ Ngăn form submit mặc định
-
-            if (cart.length === 0) return alert('Giỏ hàng trống!');
-
-            const orderData = {
-                name: document.getElementById('name').value,
-                phone: document.getElementById('phone').value,
-                address: document.getElementById('address').value,
-                payment_method: document.getElementById('payment_method').value,
-                user_id: document.getElementById('user_id').value,
-                cart: cart.map(item => ({
-                    id: item.id,
-                    variant_id: item.variantId || null,
-                    quantity: item.quantity,
-                    name: item.name
-                }))
-            };
-
-            console.log("Checkout data:", orderData);
-
-            fetch('/api/order/place', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        // Nếu bạn dùng Sanctum/Passport cho user đăng nhập thì thêm token:
-                        'Authorization': 'Bearer ' + localStorage.getItem('token')
-                    },
-                    body: JSON.stringify(orderData)
-                })
-                .then(res => res.json())
-                .then(data => {
-                    // return console.log(data);
-
-                    if (data.success) {
-                        alert("Đặt hàng thành công! Mã đơn: " + data.order_id);
-                        cart = []; // clear giỏ hàng
-                        renderCart();
-                        const userId = @json($conversation->user->id);
-
-                        // Gọi hàm loadOrderHistory
-                        loadOrderHistory(userId);
-
-                    } else {
-                        alert("Lỗi: " + data.message);
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    alert("Có lỗi khi đặt hàng.");
-                });
-        });
-    </script> --}}
     <script>
         let cart = [];
         let appliedVoucher = null;
@@ -906,19 +737,19 @@
                                 <tbody>
                                     ${cart.map((item, i) =>
                                     `<tr>
-                                                                                                                        <td>${item.name}</td>
-                                                                                                                        <td>${item.price.toLocaleString()} đ</td>
-                                                                                                                        <td>
-                                                                                                                            <input type="number" class="form-control form-control-sm update-qty" 
-                                                                                                                                    data-index="${i}" min="1" value="${item.quantity}" style="min-width: 50px;">
-                                                                                                                        </td>
-                                                                                                                        <td>${(item.price * item.quantity).toLocaleString()} đ</td>
-                                                                                                                        <td>
-                                                                                                                            <button class="btn btn-danger btn-sm remove-item" data-index="${i}">
-                                                                                                                                Xóa
-                                                                                                                            </button>
-                                                                                                                        </td>
-                                                                                                                    </tr>`).join('')}
+                                                                                                                            <td>${item.name}</td>
+                                                                                                                            <td>${item.price.toLocaleString()} đ</td>
+                                                                                                                            <td>
+                                                                                                                                <input type="number" class="form-control form-control-sm update-qty" 
+                                                                                                                                        data-index="${i}" min="1" value="${item.quantity}" style="min-width: 50px;">
+                                                                                                                            </td>
+                                                                                                                            <td>${(item.price * item.quantity).toLocaleString()} đ</td>
+                                                                                                                            <td>
+                                                                                                                                <button class="btn btn-danger btn-sm remove-item" data-index="${i}">
+                                                                                                                                    Xóa
+                                                                                                                                </button>
+                                                                                                                            </td>
+                                                                                                                        </tr>`).join('')}
                                 </tbody>
                                 `;
             container.appendChild(table);
@@ -1027,7 +858,6 @@
         // Sự kiện checkout
         document.getElementById('checkout-btn').addEventListener('click', () => {
             event.preventDefault(); // ❌ Ngăn form submit mặc định
-            console.log(cart.length);
 
             if (cart.length === 0) return alert('Giỏ hàng trống!');
 
@@ -1036,7 +866,7 @@
                 phone: document.getElementById('phone').value,
                 address: document.getElementById('address').value,
                 payment_method: document.getElementById('payment_method').value,
-                // user_id: document.getElementById('user_id').value,
+                user_id: document.getElementById('user_id').value,
                 voucher: appliedVoucher ? appliedVoucher.code : null, // thêm dòng này
 
                 cart: cart.map(item => ({
@@ -1055,7 +885,7 @@
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
                         // Nếu bạn dùng Sanctum/Passport cho user đăng nhập thì thêm token:
-                        'Authorization': 'Bearer ' + localStorage.getItem('token')
+                        // 'Authorization': 'Bearer ' + userToken
                     },
                     body: JSON.stringify(orderData)
                 })

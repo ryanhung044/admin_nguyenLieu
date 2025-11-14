@@ -595,122 +595,162 @@ class ConversationController extends Controller
     // }
 
     public function facebookCallback(Request $request)
-    {
-        $verifyToken = 'my_fb_wdfasdfasdfasdfebhook_secretdafsdfasasdfasdfasdfasdfsdffsdfuyjsfgt456gdfsg34';
+{
+    $verifyToken = 'my_fb_wdfasdfasdfasdfebhook_secretdafsdfasasdfasdfasdfasdfsdffsdfuyjsfgt456gdfsg34';
 
-        // 🔹 Bước 1: Verify webhook
-        if ($request->isMethod('get')) {
-            if ($request->get('hub_verify_token') === $verifyToken) {
-                return response($request->get('hub_challenge'), 200);
-            }
-            return response('Error, wrong validation token', 403);
+    // 🔹 Bước 1: Verify webhook
+    if ($request->isMethod('get')) {
+        if ($request->get('hub_verify_token') === $verifyToken) {
+            return response($request->get('hub_challenge'), 200);
         }
-
-        Log::info('Facebook Webhook', $request->all());
-
-        foreach ($request->entry ?? [] as $entry) {
-
-            // 1️⃣ Messenger events
-            foreach ($entry['messaging'] ?? [] as $msg) {
-                $senderId = $msg['sender']['id'] ?? null;
-
-                if (!$senderId) {
-                    Log::warning('Cannot resolve senderId: ' . json_encode($msg));
-                    continue;
-                }
-
-                // ✅ Conversation
-                $conversation = Conversation::firstOrCreate(
-                    ['platform' => 'facebook', 'external_id' => $senderId],
-                    ['user_id' => $senderId, 'last_message' => '', 'last_time' => now()]
-                );
-
-                // ✅ User profile
-                $user = User::where('zalo_id', $senderId)->first();
-                if (!$user) {
-                    $accessToken = config('services.facebook.page_access_token');
-                    $url = "https://graph.facebook.com/v23.0/$senderId?fields=name,picture&access_token=$accessToken";
-                    $response = Http::get($url)->json();
-                    $name = $response['name'] ?? 'FB User';
-                    $avatar = $response['picture']['data']['url'] ?? null;
-
-                    $user = User::updateOrCreate(
-                        ['zalo_id' => $senderId],
-                        ['name' => $name, 'full_name' => $name, 'avatar' => $avatar, 'role' => 'user']
-                    );
-                }
-
-                // ✅ Xử lý event messaging
-                if (isset($msg['message'])) {
-
-                    if (isset($msg['message']['text'])) {
-                        $this->storeMessage($conversation, 'user', 'text', $msg['message']['text']);
-                    }
-
-                    if (isset($msg['message']['attachments'])) {
-                        foreach ($msg['message']['attachments'] as $att) {
-                            $type = $att['type'] ?? 'file';
-                            $url  = $att['payload']['url'] ?? json_encode($att);
-                            $this->storeMessage($conversation, 'user', $type, $url);
-                        }
-                    }
-
-                    if (isset($msg['message']['is_echo'])) {
-                        $this->storeMessage($conversation, 'system', 'echo', json_encode($msg['message']));
-                    }
-
-                    if (isset($msg['message']['reactions'])) {
-                        $this->storeMessage($conversation, 'user', 'reaction', json_encode($msg['message']['reactions']));
-                    }
-                }
-
-                if (isset($msg['message_context'])) {
-                    $context = $msg['message_context'];
-
-                    foreach ($context['detections'] ?? [] as $det) {
-                        $type = $det['type'] ?? 'unknown';
-                        $this->storeMessage($conversation, 'system', "message_context_detection_$type", json_encode($det));
-                    }
-
-                    foreach ($context['suggestions'] ?? [] as $sug) {
-                        $type = $sug['type'] ?? 'unknown';
-                        $this->storeMessage($conversation, 'system', "message_context_suggestion_$type", json_encode($sug));
-                    }
-                }
-
-                if (isset($msg['postback'])) {
-                    $payload = $msg['postback']['payload'] ?? '';
-                    $this->storeMessage($conversation, 'user', 'postback', $payload);
-                }
-
-                if (isset($msg['referral'])) {
-                    $this->storeMessage($conversation, 'user', 'referral', json_encode($msg['referral']));
-                }
-
-                if (isset($msg['delivery'])) {
-                    $this->storeMessage($conversation, 'system', 'delivery', json_encode($msg['delivery']));
-                }
-
-                if (isset($msg['read'])) {
-                    $this->storeMessage($conversation, 'system', 'read', json_encode($msg['read']));
-                }
-
-                if (isset($msg['account_linking'])) {
-                    $this->storeMessage($conversation, 'system', 'account_linking', json_encode($msg['account_linking']));
-                }
-            }
-
-            // 2️⃣ Page-level changes (leadgen, feed, members...)
-            foreach ($entry['changes'] ?? [] as $change) {
-                $field = $change['field'] ?? 'unknown';
-                $value = $change['value'] ?? [];
-                $this->storeMessage($conversation ?? null, 'system', $field, json_encode($value));
-            }
-        }
-
-        return response()->json(['status' => 'ok']);
+        return response('Error, wrong validation token', 403);
     }
 
+    // 🔹 Log tất cả dữ liệu nhận được
+    Log::info('Facebook Webhook', $request->all());
+
+    // 🔹 Xử lý từng entry
+    foreach ($request->entry ?? [] as $entry) {
+
+        // 1️⃣ Messenger events
+        foreach ($entry['messaging'] ?? [] as $msg) {
+            $senderId = $msg['sender']['id'] ?? null;
+
+            if (!$senderId) {
+                Log::warning('Cannot resolve senderId: ' . json_encode($msg));
+                continue;
+            }
+
+            // ✅ Conversation
+            $conversation = Conversation::firstOrCreate(
+                ['platform' => 'facebook', 'external_id' => $senderId],
+                ['user_id' => $senderId, 'last_message' => '', 'last_time' => now()]
+            );
+
+            // ✅ Lấy hoặc tạo user
+            $user = User::where('zalo_id', $senderId)->first();
+            if (!$user) {
+                $accessToken = config('services.facebook.page_access_token');
+                $url = "https://graph.facebook.com/v23.0/$senderId?fields=name,picture&access_token=$accessToken";
+                $response = Http::get($url)->json();
+                $name = $response['name'] ?? 'FB User';
+                $avatar = $response['picture']['data']['url'] ?? null;
+
+                $user = User::updateOrCreate(
+                    ['zalo_id' => $senderId],
+                    ['name' => $name, 'full_name' => $name, 'avatar' => $avatar, 'role' => 'user']
+                );
+            }
+
+            // ✅ Các loại event trong messaging
+            $events = [
+                'message', 'postback', 'referral', 'delivery', 'read', 'account_linking',
+                'message_context', 'reaction', 'optin', 'policy_enforcement'
+            ];
+
+            foreach ($events as $event) {
+                if (isset($msg[$event])) {
+                    $data = $msg[$event];
+                    $type = is_array($data) ? json_encode($data) : $data;
+                    $this->storeMessage($conversation, 'user', $event, $type);
+                }
+            }
+
+            // ✅ Xử lý message chi tiết
+            if (isset($msg['message'])) {
+                $message = $msg['message'];
+
+                if (isset($message['text'])) {
+                    $this->storeMessage($conversation, 'user', 'text', $message['text']);
+                }
+
+                if (isset($message['attachments'])) {
+                    foreach ($message['attachments'] as $att) {
+                        $type = $att['type'] ?? 'file';
+                        $url  = $att['payload']['url'] ?? json_encode($att);
+                        $this->storeMessage($conversation, 'user', $type, $url);
+                    }
+                }
+
+                if (isset($message['is_echo'])) {
+                    $this->storeMessage($conversation, 'system', 'echo', json_encode($message));
+                }
+
+                if (isset($message['reactions'])) {
+                    $this->storeMessage($conversation, 'user', 'reaction', json_encode($message['reactions']));
+                }
+            }
+
+            // ✅ Message context (detections, suggestions)
+            if (isset($msg['message_context'])) {
+                $context = $msg['message_context'];
+
+                foreach ($context['detections'] ?? [] as $det) {
+                    $type = $det['type'] ?? 'unknown';
+                    $this->storeMessage($conversation, 'system', "context_detection_$type", json_encode($det));
+                }
+
+                foreach ($context['suggestions'] ?? [] as $sug) {
+                    $type = $sug['type'] ?? 'unknown';
+                    $this->storeMessage($conversation, 'system', "context_suggestion_$type", json_encode($sug));
+                }
+            }
+        }
+
+        // 2️⃣ Page-level events
+        foreach ($entry['changes'] ?? [] as $change) {
+            $field = $change['field'] ?? 'unknown';
+            $value = $change['value'] ?? [];
+
+            $content = json_encode($value);
+
+            // ✅ Xử lý theo loại field
+            switch ($field) {
+                case 'leadgen':
+                    $this->storeMessage(null, 'system', 'leadgen', $content);
+                    break;
+
+                case 'feed':
+                    $this->storeMessage(null, 'system', 'feed_update', $content);
+                    break;
+
+                case 'mention':
+                    $this->storeMessage(null, 'system', 'mention', $content);
+                    break;
+
+                case 'live_videos':
+                    $this->storeMessage(null, 'system', 'live_videos', $content);
+                    break;
+
+                case 'ratings':
+                    $this->storeMessage(null, 'system', 'ratings', $content);
+                    break;
+
+                case 'products':
+                    $this->storeMessage(null, 'system', 'products', $content);
+                    break;
+
+                case 'message_template_status_update':
+                    $this->storeMessage(null, 'system', 'message_template_status_update', $content);
+                    break;
+
+                case 'message_reactions':
+                    $this->storeMessage(null, 'system', 'message_reactions', $content);
+                    break;
+
+                case 'members':
+                    $this->storeMessage(null, 'system', 'group_member_change', $content);
+                    break;
+
+                default:
+                    $this->storeMessage(null, 'system', "page_event_$field", $content);
+                    break;
+            }
+        }
+    }
+
+    return response()->json(['status' => 'ok']);
+}
 
     public function index()
     {

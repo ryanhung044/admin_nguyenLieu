@@ -20,6 +20,7 @@ class Product extends Model
         'images',
         'price',
         'sale_price',
+        'cost_price',
         'slug',
         'sku',
         'category_id',
